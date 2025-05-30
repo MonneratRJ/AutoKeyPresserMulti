@@ -1,0 +1,22 @@
+app_title=Pressionador Automático de Teclas
+key_label=Tecla:
+interval_label=Intervalo (ms):
+add_button=Adicionar
+remove_button=Remover
+start_button=Iniciar
+stop_button=Parar
+status_stopped=Status: Parado
+status_running=Status: Executando
+hotkeys_info=Atalhos: F7 = Iniciar | F8 = Parar
+language_button=Idioma
+header_active=Ativo
+header_key=Tecla
+header_interval=Intervalo (ms)
+error_title=Erro
+warning_title=Aviso
+error_enter_key=Por favor, digite uma tecla
+error_valid_interval=Por favor, digite um intervalo positivo válido em milissegundos
+error_key_exists=Tecla '{key}' já existe
+warning_select_row=Por favor, selecione uma linha para remover
+warning_no_active=Nenhuma configuração de tecla ativa encontrada
+error_keyboard_lib=Biblioteca 'keyboard' é necessária. Instale com: pip install keyboard

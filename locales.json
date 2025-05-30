@@ -1,0 +1,19 @@
+{
+    "languages": [
+        {
+            "code": "en",
+            "name": "English",
+            "file": "en.txt"
+        },
+        {
+            "code": "pt",
+            "name": "Português",
+            "file": "pt.txt"
+        },
+        {
+            "code": "sp",
+            "name": "Español",
+            "file": "sp.txt"
+        }
+    ]
+}

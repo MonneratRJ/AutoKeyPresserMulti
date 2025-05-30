@@ -1,0 +1,15 @@
+{
+    "key_configs": [
+        {
+            "key": "3",
+            "interval": 6000,
+            "active": true
+        },
+        {
+            "key": "4",
+            "interval": 6000,
+            "active": true
+        }
+    ],
+    "language": "en"
+}
