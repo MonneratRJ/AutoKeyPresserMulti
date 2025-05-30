@@ -338,7 +338,8 @@ class KeyPresserApp:
             # Create default config with sample data
             self.key_configs = [
                 {'key': 'z', 'interval': 1000, 'active': True},
-                {'key': '2', 'interval': 3000, 'active': False}
+                {'key': 'x', 'interval': 2000, 'active': False},
+                {'key': 'y', 'interval': 3000, 'active': True}
             ]
             self.save_config()
         except Exception as e:
