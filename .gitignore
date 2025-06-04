@@ -1,4 +1,5 @@
-# Ignore the config.json file
+# Ignore config files and locale files
+# These files are generated and should not be tracked by git
 config.json
 locales.json
 en.txt
