@@ -384,7 +384,7 @@ class KeyPresserApp:
         """Create default language files"""
         # English
         en_texts = {
-            "app_title": "Auto Key Presser",
+            "app_title": "Auto Key Presser by MoneyRat",
             "key_label": "Key:",
             "interval_label": "Interval (ms):",
             "add_button": "Add",
@@ -410,7 +410,7 @@ class KeyPresserApp:
         
         # Portuguese
         pt_texts = {
-            "app_title": "Pressionador Automático de Teclas",
+            "app_title": "Pressionador Automático de Teclas por MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Adicionar",
@@ -436,7 +436,7 @@ class KeyPresserApp:
         
         # Spanish
         sp_texts = {
-            "app_title": "Presionador Automático de Teclas",
+            "app_title": "Presionador Automático de Teclas por MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Agregar",
