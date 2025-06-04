@@ -453,13 +453,13 @@ class KeyPresserApp:
         while self.is_running:
             try:
                 # Get next key from queue with timeout
-                key_to_press = self.key_queue.get(timeout=0.1)
+                key_to_press = self.key_queue.get(timeout=0.25)
                 
                 # Press the key
                 keyboard.press_and_release(key_to_press)
                 
-                # Minimum delay of 100ms between key presses
-                time.sleep(0.1)  # 100ms delay
+                # Minimum delay of 250ms between key presses
+                time.sleep(0.25)  # 250ms delay
                 
                 self.key_queue.task_done()
                 
@@ -482,7 +482,7 @@ class KeyPresserApp:
                 # Log errors silently
                 pass
                 
-            time.sleep(interval / 2000.0)  # Convert ms to seconds
+            time.sleep(interval / 1000.0)  # Convert ms to seconds
             
     def start_pressing(self):
         if self.is_running:
