@@ -1,0 +1,6 @@
+# Ignore the config.json file
+config.json
+locales.json
+en.txt
+pt.txt
+sp.txt
