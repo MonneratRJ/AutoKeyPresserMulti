@@ -10,6 +10,17 @@ class KeyPresserApp:
     def __init__(self, root):
         self.root = root
         self.root.geometry("500x500")
+
+        # Set application icon
+        icon_path = 'autokeypresser.png'  # or .ico
+        try:
+            img = tk.PhotoImage(file=icon_path)
+            self.root.tk.call('wm', 'iconphoto', self.root._w, img)
+        except:
+            try:
+                self.root.iconbitmap('autokeypresser.ico')
+            except:
+                pass  # Silently fail if no icon is found
         
         # Configuration files
         self.config_file = "config.json"
@@ -29,6 +40,11 @@ class KeyPresserApp:
         self.key_queue = queue.Queue()
         self.key_lock = threading.Lock()
         self.key_press_thread = None
+        
+        # Editing state
+        self.edit_entry = None
+        self.edit_item = None
+        self.edit_column = None
         
         # Load configuration and language
         self.load_languages()
@@ -56,7 +72,7 @@ class KeyPresserApp:
         header_frame.columnconfigure(0, weight=1)
         
         # Title
-        self.title_label = ttk.Label(header_frame, text="Auto Key Presser", font=("Arial", 16, "bold"))
+        self.title_label = ttk.Label(header_frame, text="Auto Key Presser by MoneyRat", font=("Arial", 16, "bold"))
         self.title_label.grid(row=0, column=0)
         
         # Language button
@@ -125,8 +141,139 @@ class KeyPresserApp:
                                      font=("Arial", 9), foreground="gray")
         self.hotkey_label.grid(row=5, column=0, pady=(5, 0))
         
-        # Bind double-click to toggle active state
-        self.tree.bind('<Double-1>', self.toggle_active)
+        # Edit info label
+        self.edit_info_label = ttk.Label(main_frame, text="Double-click Active column to toggle, Interval column to edit", 
+                                        font=("Arial", 8), foreground="gray")
+        self.edit_info_label.grid(row=6, column=0, pady=(2, 0))
+        
+        # Bind events
+        self.tree.bind('<Double-1>', self.on_double_click)
+        self.tree.bind('<Button-1>', self.on_single_click)
+        
+    def on_single_click(self, event):
+        """Handle single click to cancel editing if clicking elsewhere"""
+        if self.edit_entry:
+            # Check if click is not on the edit entry
+            try:
+                widget = event.widget.winfo_containing(event.x_root, event.y_root)
+                if widget != self.edit_entry:
+                    self.cancel_edit()
+            except:
+                self.cancel_edit()
+    
+    def on_double_click(self, event):
+        """Handle double click for toggling active state or editing interval"""
+        if self.is_running:
+            return  # Don't allow editing while running
+            
+        # Cancel any existing edit
+        if self.edit_entry:
+            self.cancel_edit()
+            
+        region = self.tree.identify_region(event.x, event.y)
+        if region != "cell":
+            return
+            
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+            
+        column = self.tree.identify_column(event.x)
+        
+        if column == '#0':  # Active column
+            self.toggle_active_by_item(item)
+        elif column == '#2':  # Interval column
+            self.start_edit(item, 'interval', event.x, event.y)
+    
+    def toggle_active_by_item(self, item):
+        """Toggle active state for a specific tree item"""
+        index = self.tree.index(item)
+        if 0 <= index < len(self.key_configs):
+            self.key_configs[index]['active'] = not self.key_configs[index]['active']
+            self.update_tree()
+            self.save_config()
+    
+    def start_edit(self, item, column, x, y):
+        """Start editing a cell"""
+        if self.is_running:
+            return
+            
+        # Get the bounding box of the cell
+        bbox = self.tree.bbox(item, column)
+        if not bbox:
+            return
+            
+        self.edit_item = item
+        self.edit_column = column
+        
+        # Get current value
+        index = self.tree.index(item)
+        if column == 'interval' and 0 <= index < len(self.key_configs):
+            current_value = str(self.key_configs[index]['interval'])
+        else:
+            return
+            
+        # Create entry widget
+        self.edit_entry = tk.Entry(self.tree, borderwidth=1, highlightthickness=1)
+        self.edit_entry.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
+        
+        # Set current value and select all
+        self.edit_entry.insert(0, current_value)
+        self.edit_entry.select_range(0, tk.END)
+        self.edit_entry.focus()
+        
+        # Bind events
+        self.edit_entry.bind('<Return>', self.save_edit)
+        self.edit_entry.bind('<Escape>', self.cancel_edit)
+        self.edit_entry.bind('<FocusOut>', self.save_edit)
+        self.edit_entry.bind('<KeyPress>', self.on_edit_keypress)
+    
+    def on_edit_keypress(self, event):
+        """Handle keypress in edit entry - only allow digits"""
+        if event.keysym in ('BackSpace', 'Delete', 'Left', 'Right', 'Home', 'End', 'Tab'):
+            return True
+        if not event.char.isdigit():
+            return "break"
+    
+    def save_edit(self, event=None):
+        """Save the edited value"""
+        if not self.edit_entry or not self.edit_item:
+            return
+            
+        new_value = self.edit_entry.get().strip()
+        
+        # Validate the new value
+        try:
+            interval = int(new_value)
+            if interval <= 0:
+                raise ValueError("Interval must be positive")
+        except ValueError:
+            messagebox.showerror(self.get_text("error_title"), 
+                               self.get_text("error_valid_interval"))
+            self.edit_entry.focus()
+            return
+        
+        # Update the configuration
+        index = self.tree.index(self.edit_item)
+        if 0 <= index < len(self.key_configs):
+            self.key_configs[index]['interval'] = interval
+            self.update_tree()
+            self.save_config()
+        
+        self.cleanup_edit()
+    
+    def cancel_edit(self, event=None):
+        """Cancel editing without saving"""
+        self.cleanup_edit()
+    
+    def cleanup_edit(self):
+        """Clean up editing widgets and state"""
+        if self.edit_entry:
+            self.edit_entry.destroy()
+            self.edit_entry = None
+        self.edit_item = None
+        self.edit_column = None
+        self.tree.focus()
         
     def show_language_menu(self):
         """Show language selection menu"""
@@ -416,17 +563,8 @@ class KeyPresserApp:
             self.save_config()  # Save after removing
             
     def toggle_active(self, event):
-        selection = self.tree.selection()
-        if not selection:
-            return
-            
-        item = selection[0]
-        index = self.tree.index(item)
-        
-        if 0 <= index < len(self.key_configs):
-            self.key_configs[index]['active'] = not self.key_configs[index]['active']
-            self.update_tree()
-            self.save_config()  # Save after toggling
+        """Legacy method - now handled by on_double_click"""
+        pass
             
     def update_tree(self):
         # Clear existing items
@@ -488,6 +626,10 @@ class KeyPresserApp:
         if self.is_running:
             return
             
+        # Cancel any active editing
+        if self.edit_entry:
+            self.cancel_edit()
+            
         active_configs = [config for config in self.key_configs if config['active']]
         
         if not active_configs:
@@ -513,9 +655,13 @@ class KeyPresserApp:
             self.timers[timer_id] = thread
             thread.start()
             
-        # Update UI
+        # Update UI - disable editing controls
         self.start_button.config(state='disabled')
         self.stop_button.config(state='normal')
+        self.add_button.config(state='disabled')
+        self.remove_button.config(state='disabled')
+        self.key_entry.config(state='disabled')
+        self.interval_entry.config(state='disabled')
         self.status_label.config(text=self.get_text("status_running"), foreground="green")
         
     def stop_pressing(self):
@@ -532,9 +678,13 @@ class KeyPresserApp:
             except queue.Empty:
                 break
         
-        # Update UI
+        # Update UI - re-enable editing controls
         self.start_button.config(state='normal')
         self.stop_button.config(state='disabled')
+        self.add_button.config(state='normal')
+        self.remove_button.config(state='normal')
+        self.key_entry.config(state='normal')
+        self.interval_entry.config(state='normal')
         self.status_label.config(text=self.get_text("status_stopped"), foreground="red")
         
     def on_closing(self):
