@@ -6,6 +6,7 @@ import keyboard
 import queue
 import json
 from i18n import I18nManager
+import style
 
 class KeyPresserApp:
     def __init__(self, root):
@@ -50,16 +51,7 @@ class KeyPresserApp:
         
         # Load configuration and language
         self.load_config()
-        
-        # Load checkbox images
-        try:
-            self.checkbox_checked = tk.PhotoImage(file="checked.png")
-            self.checkbox_unchecked = tk.PhotoImage(file="unchecked.png")
-        except Exception:
-            self.checkbox_checked = None
-            self.checkbox_unchecked = None
-        
-        self.setup_ui()
+        style.setup_ui(self)
         self.setup_hotkeys()
         self.update_ui_texts()
         self.update_tree()
@@ -67,103 +59,6 @@ class KeyPresserApp:
         # Store references to checkbuttons and their variables
         self.checkbuttons = {}
         self.checkbox_vars = {}
-        
-    def setup_ui(self):
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(2, weight=1)
-        
-        # Header frame with title and language button
-        header_frame = ttk.Frame(main_frame)
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        header_frame.columnconfigure(0, weight=1)
-        
-        # Title
-        self.title_label = ttk.Label(header_frame, text="Auto Key Presser by MoneyRat", font=("Arial", 16, "bold"))
-        self.title_label.grid(row=0, column=0)
-        
-        # Language button
-        self.language_button = ttk.Button(header_frame, text="Language", command=self.show_language_menu)
-        self.language_button.grid(row=0, column=1, padx=(10, 0))
-        
-        # Add entry frame
-        entry_frame = ttk.Frame(main_frame)
-        entry_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        self.key_label = ttk.Label(entry_frame, text="Key:")
-        self.key_label.grid(row=0, column=0, padx=(0, 5))
-        self.key_entry = ttk.Entry(entry_frame, width=10)
-        self.key_entry.grid(row=0, column=1, padx=(0, 10))
-        
-        self.interval_label = ttk.Label(entry_frame, text="Interval (ms):")
-        self.interval_label.grid(row=0, column=2, padx=(0, 5))
-        self.interval_entry = ttk.Entry(entry_frame, width=10)
-        self.interval_entry.grid(row=0, column=3, padx=(0, 10))
-        
-        self.add_button = ttk.Button(entry_frame, text="Add", command=self.add_key_config)
-        self.add_button.grid(row=0, column=4, padx=(0, 5))
-        self.remove_button = ttk.Button(entry_frame, text="Remove", command=self.remove_key_config)
-        self.remove_button.grid(row=0, column=5)
-        
-        # Table frame
-        table_frame = ttk.Frame(main_frame)
-        table_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
-        table_frame.columnconfigure(0, weight=1)
-        table_frame.rowconfigure(0, weight=1)
-        
-        # Treeview for the table
-        self.tree = ttk.Treeview(table_frame, columns=('key', 'interval'), show='tree headings', height=10)
-        self.tree.heading('#0', text='Active')
-        self.tree.heading('key', text='Key')
-        self.tree.heading('interval', text='Interval (ms)')
-        
-        self.tree.column('#0', width=80, anchor='center')
-        self.tree.column('key', width=150, anchor='center')
-        self.tree.column('interval', width=150, anchor='center')
-        
-        # Scrollbar for treeview
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        
-        self.tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        
-        # Control buttons frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, pady=(10, 0))
-        
-        self.start_button = ttk.Button(button_frame, text="Start", command=self.start_pressing, style="Accent.TButton")
-        self.start_button.grid(row=0, column=0, padx=(0, 10))
-        
-        self.stop_button = ttk.Button(button_frame, text="Stop", command=self.stop_pressing)
-        self.stop_button.grid(row=0, column=1)
-        self.stop_button.config(state='disabled')
-        
-        # Status label
-        self.status_label = ttk.Label(main_frame, text="Status: Stopped", foreground="red")
-        self.status_label.grid(row=4, column=0, pady=(10, 0))
-        
-        # Hotkey info label
-        self.hotkey_label = ttk.Label(main_frame, text="Hotkeys: F7 = Start | F8 = Stop", 
-                                     font=("Arial", 9), foreground="gray")
-        self.hotkey_label.grid(row=5, column=0, pady=(5, 0))
-        
-        # Edit info label
-        self.edit_info_label = ttk.Label(main_frame, text="Double-click Active column to toggle, Interval column to edit", 
-                                        font=("Arial", 8), foreground="gray")
-        self.edit_info_label.grid(row=6, column=0, pady=(2, 0))
-        
-        # Bind events
-        self.tree.bind('<Double-1>', self.on_double_click)
-        self.tree.bind('<Button-1>', self.on_single_click)
-        self.tree.bind('<Configure>', lambda e: self.update_tree_checkboxes())
-        self.tree.bind('<Motion>', lambda e: self.update_tree_checkboxes())
-        self.tree.bind('<<TreeviewSelect>>', lambda e: self.update_tree_checkboxes())
         
     def on_single_click(self, event):
         """Handle single click to cancel editing if clicking elsewhere"""
