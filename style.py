@@ -82,6 +82,22 @@ def setup_ui(app):
     app.edit_info_label = ttk.Label(main_frame, text="Double-click Active column to toggle, Interval column to edit", font=("Arial", 8), foreground="gray")
     app.edit_info_label.grid(row=6, column=0, pady=(2, 0))
 
+    # PayPal Donate button at the bottom
+    def open_paypal():
+        import webbrowser
+        webbrowser.open_new("https://www.paypal.com/donate/?business=RFHNR4TM6KPQ4&no_recurring=0&item_name=A+brazilian+software+developer+and+maker+that+enjoys+giving+back+to+the+community.+Help+me+back+if+you+can.+Much+appreciated%21&currency_code=BRL")
+    try:
+        app.paypal_img = tk.PhotoImage(file="paypaldonatebutton.png")
+        # Resize image to about 1.5x the width of Start/Stop buttons (e.g., ~120-140px wide)
+        desired_width = 140
+        desired_height = int(app.paypal_img.height() * (desired_width / app.paypal_img.width()))
+        app.paypal_img = app.paypal_img.subsample(max(1, app.paypal_img.width() // desired_width), max(1, app.paypal_img.height() // desired_height))
+        app.paypal_button = ttk.Button(main_frame, image=app.paypal_img, command=open_paypal)
+        app.paypal_button.grid(row=7, column=0, pady=(12, 0), sticky="s")
+    except Exception as e:
+        app.paypal_button = ttk.Button(main_frame, text="Donate with PayPal", command=open_paypal)
+        app.paypal_button.grid(row=7, column=0, pady=(12, 0), sticky="s")
+
     # Bind events
     app.tree.bind('<Double-1>', app.on_double_click)
     app.tree.bind('<Button-1>', app.on_single_click)
