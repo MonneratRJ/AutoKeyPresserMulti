@@ -5,6 +5,7 @@ import time
 import keyboard
 import queue
 import json
+from i18n import I18nManager
 
 class KeyPresserApp:
     def __init__(self, root):
@@ -27,9 +28,10 @@ class KeyPresserApp:
         self.locales_file = "locales.json"
         
         # Language and localization
-        self.current_language = "en"
-        self.texts = {}
-        self.available_languages = []
+        self.i18n = I18nManager()
+        self.current_language = self.i18n.get_current_language()
+        self.texts = self.i18n.texts
+        self.available_languages = self.i18n.get_available_languages()
         
         # Data storage
         self.key_configs = []
@@ -47,14 +49,24 @@ class KeyPresserApp:
         self.edit_column = None
         
         # Load configuration and language
-        self.load_languages()
-        self.load_texts()
         self.load_config()
+        
+        # Load checkbox images
+        try:
+            self.checkbox_checked = tk.PhotoImage(file="checked.png")
+            self.checkbox_unchecked = tk.PhotoImage(file="unchecked.png")
+        except Exception:
+            self.checkbox_checked = None
+            self.checkbox_unchecked = None
         
         self.setup_ui()
         self.setup_hotkeys()
         self.update_ui_texts()
         self.update_tree()
+        
+        # Store references to checkbuttons and their variables
+        self.checkbuttons = {}
+        self.checkbox_vars = {}
         
     def setup_ui(self):
         # Main frame
@@ -149,6 +161,9 @@ class KeyPresserApp:
         # Bind events
         self.tree.bind('<Double-1>', self.on_double_click)
         self.tree.bind('<Button-1>', self.on_single_click)
+        self.tree.bind('<Configure>', lambda e: self.update_tree_checkboxes())
+        self.tree.bind('<Motion>', lambda e: self.update_tree_checkboxes())
+        self.tree.bind('<<TreeviewSelect>>', lambda e: self.update_tree_checkboxes())
         
     def on_single_click(self, event):
         """Handle single click to cancel editing if clicking elsewhere"""
@@ -180,9 +195,7 @@ class KeyPresserApp:
             
         column = self.tree.identify_column(event.x)
         
-        if column == '#0':  # Active column
-            self.toggle_active_by_item(item)
-        elif column == '#2':  # Interval column
+        if column == '#2':  # Interval column
             self.start_edit(item, 'interval', event.x, event.y)
     
     def toggle_active_by_item(self, item):
@@ -295,11 +308,13 @@ class KeyPresserApp:
     def change_language(self, language_code):
         """Change application language"""
         if language_code != self.current_language:
-            self.current_language = language_code
-            self.load_texts()
+            self.i18n.change_language(language_code)
+            self.current_language = self.i18n.get_current_language()
+            self.texts = self.i18n.texts
+            self.available_languages = self.i18n.get_available_languages()
             self.update_ui_texts()
             self.save_config()
-    
+
     def update_ui_texts(self):
         """Update all UI texts with current language"""
         self.root.title(self.get_text("app_title"))
@@ -325,155 +340,6 @@ class KeyPresserApp:
         
         self.hotkey_label.config(text=self.get_text("hotkeys_info"))
         
-    def load_languages(self):
-        """Load available languages from locales.json"""
-        try:
-            with open(self.locales_file, 'r', encoding='utf-8') as f:
-                locales_data = json.load(f)
-                self.available_languages = locales_data.get('languages', [])
-        except FileNotFoundError:
-            # Create default locales.json if it doesn't exist
-            self.create_default_locales()
-        except Exception as e:
-            messagebox.showerror("Error", f"Error loading locales: {e}")
-            self.available_languages = [{"code": "en", "name": "English", "file": "en.txt"}]
-    
-    def create_default_locales(self):
-        """Create default locales.json file"""
-        default_locales = {
-            "languages": [
-                {"code": "en", "name": "English", "file": "en.txt"},
-                {"code": "pt", "name": "Português", "file": "pt.txt"},
-                {"code": "sp", "name": "Español", "file": "sp.txt"}
-            ]
-        }
-        try:
-            with open(self.locales_file, 'w', encoding='utf-8') as f:
-                json.dump(default_locales, f, indent=4, ensure_ascii=False)
-            self.available_languages = default_locales['languages']
-        except Exception as e:
-            messagebox.showerror("Error", f"Error creating locales file: {e}")
-    
-    def load_texts(self):
-        """Load texts for current language"""
-        current_lang_file = None
-        for lang in self.available_languages:
-            if lang['code'] == self.current_language:
-                current_lang_file = lang['file']
-                break
-        
-        if not current_lang_file:
-            current_lang_file = "en.txt"
-        
-        try:
-            self.texts = {}  # Clear existing texts
-            with open(current_lang_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and '=' in line:
-                        key, value = line.split('=', 1)
-                        self.texts[key.strip()] = value.strip()
-        except FileNotFoundError:
-            # Create default English texts if file doesn't exist
-            self.create_default_language_files()
-            self.load_texts()  # Retry loading
-        except Exception as e:
-            messagebox.showerror("Error", f"Error loading language file: {e}")
-    
-    def create_default_language_files(self):
-        """Create default language files"""
-        # English
-        en_texts = {
-            "app_title": "Auto Key Presser by MoneyRat",
-            "key_label": "Key:",
-            "interval_label": "Interval (ms):",
-            "add_button": "Add",
-            "remove_button": "Remove",
-            "start_button": "Start",
-            "stop_button": "Stop",
-            "status_stopped": "Status: Stopped",
-            "status_running": "Status: Running",
-            "hotkeys_info": "Hotkeys: F7 = Start | F8 = Stop",
-            "language_button": "Language",
-            "header_active": "Active",
-            "header_key": "Key",
-            "header_interval": "Interval (ms)",
-            "error_title": "Error",
-            "warning_title": "Warning",
-            "error_enter_key": "Please enter a key",
-            "error_valid_interval": "Please enter a valid positive interval in milliseconds",
-            "error_key_exists": "Key '{key}' already exists",
-            "warning_select_row": "Please select a row to remove",
-            "warning_no_active": "No active key configurations found",
-            "error_keyboard_lib": "'keyboard' library is required. Install it with: pip install keyboard"
-        }
-        
-        # Portuguese
-        pt_texts = {
-            "app_title": "Pressionador Automático de Teclas por MoneyRat",
-            "key_label": "Tecla:",
-            "interval_label": "Intervalo (ms):",
-            "add_button": "Adicionar",
-            "remove_button": "Remover",
-            "start_button": "Iniciar",
-            "stop_button": "Parar",
-            "status_stopped": "Status: Parado",
-            "status_running": "Status: Executando",
-            "hotkeys_info": "Atalhos: F7 = Iniciar | F8 = Parar",
-            "language_button": "Idioma",
-            "header_active": "Ativo",
-            "header_key": "Tecla",
-            "header_interval": "Intervalo (ms)",
-            "error_title": "Erro",
-            "warning_title": "Aviso",
-            "error_enter_key": "Por favor, digite uma tecla",
-            "error_valid_interval": "Por favor, digite um intervalo positivo válido em milissegundos",
-            "error_key_exists": "Tecla '{key}' já existe",
-            "warning_select_row": "Por favor, selecione uma linha para remover",
-            "warning_no_active": "Nenhuma configuração de tecla ativa encontrada",
-            "error_keyboard_lib": "Biblioteca 'keyboard' é necessária. Instale com: pip install keyboard"
-        }
-        
-        # Spanish
-        sp_texts = {
-            "app_title": "Presionador Automático de Teclas por MoneyRat",
-            "key_label": "Tecla:",
-            "interval_label": "Intervalo (ms):",
-            "add_button": "Agregar",
-            "remove_button": "Eliminar",
-            "start_button": "Iniciar",
-            "stop_button": "Detener",
-            "status_stopped": "Estado: Detenido",
-            "status_running": "Estado: Ejecutando",
-            "hotkeys_info": "Atajos: F7 = Iniciar | F8 = Detener",
-            "language_button": "Idioma",
-            "header_active": "Activo",
-            "header_key": "Tecla",
-            "header_interval": "Intervalo (ms)",
-            "error_title": "Error",
-            "warning_title": "Advertencia",
-            "error_enter_key": "Por favor, ingrese una tecla",
-            "error_valid_interval": "Por favor, ingrese un intervalo positivo válido en milisegundos",
-            "error_key_exists": "La tecla '{key}' ya existe",
-            "warning_select_row": "Por favor, seleccione una fila para eliminar",
-            "warning_no_active": "No se encontraron configuraciones de teclas activas",
-            "error_keyboard_lib": "Se requiere la biblioteca 'keyboard'. Instálela con: pip install keyboard"
-        }
-        
-        # Create files
-        try:
-            self.write_language_file("en.txt", en_texts)
-            self.write_language_file("pt.txt", pt_texts)
-            self.write_language_file("sp.txt", sp_texts)
-        except Exception as e:
-            messagebox.showerror("Error", f"Error creating language files: {e}")
-    
-    def write_language_file(self, filename, texts):
-        """Write language texts to file"""
-        with open(filename, 'w', encoding='utf-8') as f:
-            for key, value in texts.items():
-                f.write(f"{key}={value}\n")
-    
     def load_config(self):
         """Load configuration from file"""
         try:
@@ -481,6 +347,8 @@ class KeyPresserApp:
                 config = json.load(f)
                 self.key_configs = config.get('key_configs', [])
                 self.current_language = config.get('language', 'en')
+                self.i18n.change_language(self.current_language)
+                self.texts = self.i18n.texts
         except FileNotFoundError:
             # Create default config with sample data
             self.key_configs = [
@@ -504,16 +372,6 @@ class KeyPresserApp:
         except Exception as e:
             messagebox.showerror("Error", f"Error saving config: {e}")
     
-    def get_text(self, key, **kwargs):
-        """Get localized text with optional formatting"""
-        text = self.texts.get(key, key)
-        if kwargs:
-            try:
-                text = text.format(**kwargs)
-            except:
-                pass
-        return text
-            
     def add_key_config(self):
         key = self.key_entry.get().strip().lower()
         interval_text = self.interval_entry.get().strip()
@@ -570,13 +428,40 @@ class KeyPresserApp:
         # Clear existing items
         for item in self.tree.get_children():
             self.tree.delete(item)
-            
-        # Add current configurations
-        for config in self.key_configs:
-            active_text = "✓" if config['active'] else "✗"
-            self.tree.insert('', 'end', values=(config['key'], config['interval']), 
-                           text=active_text)
-                           
+        # Remove old checkbuttons
+        for cb in getattr(self, 'checkbuttons', {}).values():
+            cb.destroy()
+        self.checkbuttons = {}
+        self.checkbox_vars = {}
+        # Add current configurations and overlay checkboxes
+        for idx, config in enumerate(self.key_configs):
+            item_id = self.tree.insert('', 'end', values=(config['key'], config['interval']))
+            self.place_checkbox(item_id, idx)
+
+    def place_checkbox(self, item_id, idx):
+        bbox = self.tree.bbox(item_id, '#0')
+        if not bbox:
+            self.root.after(10, lambda: self.place_checkbox(item_id, idx))
+            return
+        # Store BooleanVar to keep it alive
+        var = self.checkbox_vars[idx] = tk.BooleanVar(value=self.key_configs[idx]['active'])
+        cb = ttk.Checkbutton(self.tree, variable=var, command=lambda i=idx, v=var: self.on_checkbox_toggle(i, v), takefocus=0)
+        cb_width = 18
+        cb_height = 18
+        x = bbox[0] + (bbox[2] - cb_width) // 2
+        y = bbox[1] + (bbox[3] - cb_height) // 2
+        cb.place(x=x, y=y, width=cb_width, height=cb_height)
+        self.checkbuttons[item_id] = cb
+
+    def on_checkbox_toggle(self, idx, var):
+        self.key_configs[idx]['active'] = var.get()
+        self.save_config()
+
+    def update_tree_checkboxes(self):
+        # Reposition checkboxes after scroll/resize
+        for idx, item_id in enumerate(self.tree.get_children()):
+            self.place_checkbox(item_id, idx)
+
     def setup_hotkeys(self):
         """Setup global hotkeys for start/stop functionality"""
         try:
@@ -597,7 +482,7 @@ class KeyPresserApp:
                 keyboard.press_and_release(key_to_press)
                 
                 # Minimum delay of 250ms between key presses
-                time.sleep(0.25)  # 250ms delay
+                time.sleep(0.25) # 250ms delay
                 
                 self.key_queue.task_done()
                 
@@ -696,6 +581,9 @@ class KeyPresserApp:
         except:
             pass
         self.root.destroy()
+
+    def get_text(self, key, **kwargs):
+        return self.i18n.get_text(key, **kwargs)
 
 def main():
     try:
