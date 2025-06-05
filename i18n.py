@@ -61,7 +61,7 @@ class I18nManager:
 
     def create_default_language_files(self):
         en_texts = {
-            "app_title": "Auto Key Presser by MoneyRat",
+            "app_title": "MoneyRat's KeyPresser Deluxe",
             "key_label": "Key:",
             "interval_label": "Interval (ms):",
             "add_button": "Add",
@@ -85,7 +85,7 @@ class I18nManager:
             "error_keyboard_lib": "'keyboard' library is required. Install it with: pip install keyboard"
         }
         pt_texts = {
-            "app_title": "Pressionador Automático de Teclas por MoneyRat",
+            "app_title": "KeyPresser Deluxe do MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Adicionar",
@@ -109,7 +109,7 @@ class I18nManager:
             "error_keyboard_lib": "Biblioteca 'keyboard' é necessária. Instale com: pip install keyboard"
         }
         sp_texts = {
-            "app_title": "Presionador Automático de Teclas por MoneyRat",
+            "app_title": "KeyPresser Deluxe de MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Agregar",

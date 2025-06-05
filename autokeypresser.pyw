@@ -381,8 +381,9 @@ class KeyPresserApp:
                 # Get next key from queue with timeout
                 key_to_press = self.key_queue.get(timeout=0.25)
                 
-                self.focus_selected_window()
-                window_utils.send_key_to_window(key_to_press)
+                win_info = self.get_selected_window_info()
+                if win_info:
+                    window_utils.send_key_to_window(win_info, key_to_press)
                 
                 # Minimum delay of 250ms between key presses
                 time.sleep(0.25) # 250ms delay
@@ -399,80 +400,69 @@ class KeyPresserApp:
     def key_press_worker(self, key, interval):
         """Worker function for scheduling key presses at intervals"""
         timer_id = f"{key}_{interval}"
-        
         while self.is_running and timer_id in self.timers:
             try:
-                # Add key to queue instead of pressing directly
-                self.key_queue.put(key)
+                # Only send key if a window is selected
+                if self.selected_window:
+                    window_utils.send_key_to_window(self.selected_window, key)
             except Exception as e:
-                # Log errors silently
                 pass
-                
             time.sleep(interval / 1000.0)  # Convert ms to seconds
             
     def start_pressing(self):
         if self.is_running:
             return
-            
-        # Cancel any active editing
         if self.edit_entry:
             self.cancel_edit()
-            
         active_configs = [config for config in self.key_configs if config['active']]
-        
         if not active_configs:
             messagebox.showwarning(self.get_text("warning_title"), self.get_text("warning_no_active"))
             return
-            
         self.is_running = True
         self.timers = {}
-        
-        # Start the key press manager thread
         self.key_press_thread = threading.Thread(target=self.key_press_manager)
         self.key_press_thread.daemon = True
         self.key_press_thread.start()
-        
-        # Start a thread for each active key configuration
         for config in active_configs:
             key = config['key']
             interval = config['interval']
             timer_id = f"{key}_{interval}"
-            
             thread = threading.Thread(target=self.key_press_worker, args=(key, interval))
             thread.daemon = True
             self.timers[timer_id] = thread
             thread.start()
-            
-        # Update UI - disable editing controls
+        # Disable all controls except STOP
         self.start_button.config(state='disabled')
         self.stop_button.config(state='normal')
         self.add_button.config(state='disabled')
         self.remove_button.config(state='disabled')
         self.key_entry.config(state='disabled')
         self.interval_entry.config(state='disabled')
+        self.tree.config(selectmode='none')
+        if hasattr(self, 'window_combo'):
+            self.window_combo.config(state='disabled')
         self.status_label.config(text=self.get_text("status_running"), foreground="green")
         
     def stop_pressing(self):
         if not self.is_running:
             return
-            
         self.is_running = False
         self.timers = {}
-        
-        # Clear any remaining keys in the queue
         while not self.key_queue.empty():
             try:
                 self.key_queue.get_nowait()
             except queue.Empty:
                 break
-        
-        # Update UI - re-enable editing controls
+        # Re-enable all controls
         self.start_button.config(state='normal')
         self.stop_button.config(state='disabled')
         self.add_button.config(state='normal')
         self.remove_button.config(state='normal')
         self.key_entry.config(state='normal')
         self.interval_entry.config(state='normal')
+        self.tree.config(selectmode='extended')
+        if hasattr(self, 'window_combo'):
+            self.window_combo.config(state='readonly')
         self.status_label.config(text=self.get_text("status_stopped"), foreground="red")
         
     def on_closing(self):
@@ -487,6 +477,38 @@ class KeyPresserApp:
 
     def get_text(self, key, **kwargs):
         return self.i18n.get_text(key, **kwargs)
+
+    def update_window_list(self):
+        windows = window_utils.list_windows()
+        self.window_list = windows  # Store full window info dicts
+        if hasattr(self, 'window_combo'):
+            # Update combobox with window titles
+            titles = [w['title'] for w in windows]
+            self.window_combo['values'] = titles
+            if titles:
+                self.window_combo.current(0)
+                self.selected_window = windows[0]
+            else:
+                self.selected_window = None
+
+    def on_window_select(self, event=None):
+        if hasattr(self, 'window_combo'):
+            idx = self.window_combo.current()
+            if 0 <= idx < len(self.window_list):
+                self.selected_window = self.window_list[idx]
+            else:
+                self.selected_window = None
+
+    def get_selected_window_info(self):
+        if hasattr(self, 'selected_window_index') and self.selected_window_index is not None:
+            if 0 <= self.selected_window_index < len(self.window_infos):
+                return self.window_infos[self.selected_window_index]
+        return None
+
+    def focus_selected_window(self):
+        win_info = self.get_selected_window_info()
+        if win_info:
+            window_utils.focus_window(win_info)
 
 def main():
     try:

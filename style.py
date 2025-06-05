@@ -14,16 +14,23 @@ def setup_ui(app):
     header_frame = ttk.Frame(main_frame)
     header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
     header_frame.columnconfigure(0, weight=1)
-    app.title_label = ttk.Label(header_frame, text="Auto Key Presser by MoneyRat", font=("Arial", 16, "bold"))
-    app.title_label.grid(row=0, column=0)
-    app.language_button = ttk.Button(header_frame, text="Language", command=app.show_language_menu)
-    app.language_button.grid(row=0, column=1, padx=(10, 0))
+    header_frame.columnconfigure(1, weight=1)
+    header_frame.columnconfigure(2, weight=1)
 
-    # Add window selection dropdown to the UI
+    # Title on its own row
+    app.title_label = ttk.Label(header_frame, text="MoneyRat's KeyPresser Deluxe", font=("Arial", 16, "bold"))
+    app.title_label.grid(row=0, column=0, columnspan=3, sticky="we", pady=(0, 2))
+
+    # Second row: window selector left, language button right
     app.window_combo = ttk.Combobox(header_frame, state="readonly")
-    app.window_combo.grid(row=0, column=2, padx=(10, 0))
+    app.window_combo.grid(row=1, column=0, columnspan=2, sticky="we", padx=(0, 0))
+    header_frame.columnconfigure(0, weight=1)
+    header_frame.columnconfigure(1, weight=1)
     app.window_combo.bind('<<ComboboxSelected>>', app.on_window_select)
     app.update_window_list()
+
+    app.language_button = ttk.Button(header_frame, text="Language", command=app.show_language_menu)
+    app.language_button.grid(row=1, column=2, sticky="e", padx=(0, 0))
 
     # Add entry frame
     entry_frame = ttk.Frame(main_frame)
