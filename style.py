@@ -19,6 +19,12 @@ def setup_ui(app):
     app.language_button = ttk.Button(header_frame, text="Language", command=app.show_language_menu)
     app.language_button.grid(row=0, column=1, padx=(10, 0))
 
+    # Add window selection dropdown to the UI
+    app.window_combo = ttk.Combobox(header_frame, state="readonly")
+    app.window_combo.grid(row=0, column=2, padx=(10, 0))
+    app.window_combo.bind('<<ComboboxSelected>>', app.on_window_select)
+    app.update_window_list()
+
     # Add entry frame
     entry_frame = ttk.Frame(main_frame)
     entry_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))

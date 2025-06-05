@@ -7,6 +7,7 @@ import queue
 import json
 from i18n import I18nManager
 import style
+import window_utils
 
 class KeyPresserApp:
     def __init__(self, root):
@@ -49,12 +50,19 @@ class KeyPresserApp:
         self.edit_item = None
         self.edit_column = None
         
+        # Window selection
+        self.selected_window = None
+        
         # Load configuration and language
         self.load_config()
         style.setup_ui(self)
         self.setup_hotkeys()
         self.update_ui_texts()
         self.update_tree()
+        self.update_window_list()
+        
+        # After UI setup, update window list
+        self.update_window_list()
         
         # Store references to checkbuttons and their variables
         self.checkbuttons = {}
@@ -373,8 +381,8 @@ class KeyPresserApp:
                 # Get next key from queue with timeout
                 key_to_press = self.key_queue.get(timeout=0.25)
                 
-                # Press the key
-                keyboard.press_and_release(key_to_press)
+                self.focus_selected_window()
+                window_utils.send_key_to_window(key_to_press)
                 
                 # Minimum delay of 250ms between key presses
                 time.sleep(0.25) # 250ms delay
