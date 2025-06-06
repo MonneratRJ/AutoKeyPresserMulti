@@ -1,42 +1,33 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import sys
 import threading
 import time
-import keyboard
 import queue
 import json
+import os
+
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTreeWidget, QTreeWidgetItem, QCheckBox, QMessageBox, QMenu)
+from PySide6.QtCore import Qt, QTimer, QPoint
+from PySide6.QtGui import QIcon, QPixmap, QCursor
+
 from i18n import I18nManager
 import style
 import window_utils
 
-class KeyPresserApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.geometry("500x500")
-
-        # Set application icon (prefer .ico for taskbar and window)
-        import os
-        try:
-            if os.path.exists('autokeypresser.ico'):
-                self.root.iconbitmap('autokeypresser.ico')
-                # Also set iconphoto for best compatibility (convert .ico to .png in memory)
-                try:
-                    from PIL import Image, ImageTk
-                    img = Image.open('autokeypresser.ico')
-                    # Use the largest available icon in the .ico file
-                    sizes = img.info.get('sizes', [])
-                    if sizes:
-                        img = img.copy().resize(sizes[-1])
-                    img = ImageTk.PhotoImage(img)
-                    self.root.iconphoto(True, img)
-                    self._iconphoto_ref = img  # Prevent garbage collection
-                except Exception:
-                    pass
-            else:
-                img = tk.PhotoImage(file='autokeypresser.png')
-                self.root.tk.call('wm', 'iconphoto', self.root._w, img)
-        except Exception:
-            pass  # Silently fail if no icon is found
+class KeyPresserApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setGeometry(100, 100, 500, 500)
+        self.setWindowTitle("Auto Key Presser")
+        # Set application icon
+        if os.path.exists('autokeypresser.ico'):
+            self.setWindowIcon(QIcon('autokeypresser.ico'))
+        elif os.path.exists('autokeypresser.png'):
+            self.setWindowIcon(QIcon('autokeypresser.png'))
+        # Main widget and layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        # Remove duplicate layout assignment (already set in style.setup_ui)
+        # self.layout = QVBoxLayout(self.central_widget)
         
         # Configuration files
         self.config_file = "config.json"
@@ -68,6 +59,7 @@ class KeyPresserApp:
         
         # Load configuration and language
         self.load_config()
+        # All UI setup and signal connections are handled in style.setup_ui(self)
         style.setup_ui(self)
         self.setup_hotkeys()
         self.update_ui_texts()
@@ -81,6 +73,47 @@ class KeyPresserApp:
         self.checkbuttons = {}
         self.checkbox_vars = {}
         
+        # Remove example UI elements (now handled by style.setup_ui)
+        # self.title_label = QLabel("Auto Key Presser")
+        # self.layout.addWidget(self.title_label)
+        # self.language_button = QPushButton("Language")
+        # self.layout.addWidget(self.language_button)
+        # self.key_label = QLabel("Key:")
+        # self.layout.addWidget(self.key_label)
+        # self.key_entry = QLineEdit()
+        # self.layout.addWidget(self.key_entry)
+        # self.interval_label = QLabel("Interval (ms):")
+        # self.layout.addWidget(self.interval_label)
+        # self.interval_entry = QLineEdit()
+        # self.layout.addWidget(self.interval_entry)
+        # self.add_button = QPushButton("Add")
+        # self.layout.addWidget(self.add_button)
+        # self.remove_button = QPushButton("Remove")
+        # self.layout.addWidget(self.remove_button)
+        # self.start_button = QPushButton("Start")
+        # self.layout.addWidget(self.start_button)
+        # self.stop_button = QPushButton("Stop")
+        # self.layout.addWidget(self.stop_button)
+        # self.status_label = QLabel("Status: Stopped")
+        # self.layout.addWidget(self.status_label)
+        # self.hotkey_label = QLabel("Hotkeys: F7 to Start, F8 to Stop")
+        # self.layout.addWidget(self.hotkey_label)
+        # self.tree = QTreeWidget()
+        # self.tree.setHeaderLabels(["Active", "Key", "Interval"])
+        # self.layout.addWidget(self.tree)
+        
+        # Connect signals (replace with full logic)
+        self.add_button.clicked.connect(self.add_key_config)
+        self.remove_button.clicked.connect(self.remove_key_config)
+        self.start_button.clicked.connect(self.start_pressing)
+        self.stop_button.clicked.connect(self.stop_pressing)
+        self.language_button.clicked.connect(self.show_language_menu)
+        self.tree.itemDoubleClicked.connect(self.on_double_click)
+        
+        # Example: Set default key and interval
+        # self.key_entry.setText("z")
+        # self.interval_entry.setText("1000")
+    
     def on_single_click(self, event):
         """Handle single click to cancel editing if clicking elsewhere"""
         if self.edit_entry:
@@ -92,7 +125,7 @@ class KeyPresserApp:
             except:
                 self.cancel_edit()
     
-    def on_double_click(self, event):
+    def on_double_click(self, item, column):
         """Handle double click for toggling active state or editing interval"""
         if self.is_running:
             return  # Don't allow editing while running
@@ -101,18 +134,8 @@ class KeyPresserApp:
         if self.edit_entry:
             self.cancel_edit()
             
-        region = self.tree.identify_region(event.x, event.y)
-        if region != "cell":
-            return
-            
-        item = self.tree.identify_row(event.y)
-        if not item:
-            return
-            
-        column = self.tree.identify_column(event.x)
-        
-        if column == '#2':  # Interval column
-            self.start_edit(item, 'interval', event.x, event.y)
+        if column == 2:  # Interval column
+            self.start_edit(item, 'interval', item.treeWidget().visualItemRect(item).x() + item.treeWidget().header().sectionSize(2), item.treeWidget().visualItemRect(item).y())
     
     def toggle_active_by_item(self, item):
         """Toggle active state for a specific tree item"""
@@ -127,11 +150,6 @@ class KeyPresserApp:
         if self.is_running:
             return
             
-        # Get the bounding box of the cell
-        bbox = self.tree.bbox(item, column)
-        if not bbox:
-            return
-            
         self.edit_item = item
         self.edit_column = column
         
@@ -143,33 +161,34 @@ class KeyPresserApp:
             return
             
         # Create entry widget
-        self.edit_entry = tk.Entry(self.tree, borderwidth=1, highlightthickness=1)
-        self.edit_entry.place(x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3])
+        self.edit_entry = QLineEdit(self.tree)
+        self.edit_entry.setFrame(True)
+        self.edit_entry.setGeometry(x, y, 100, 20)
         
         # Set current value and select all
-        self.edit_entry.insert(0, current_value)
-        self.edit_entry.select_range(0, tk.END)
-        self.edit_entry.focus()
+        self.edit_entry.setText(current_value)
+        self.edit_entry.selectAll()
+        self.edit_entry.setFocus()
         
         # Bind events
-        self.edit_entry.bind('<Return>', self.save_edit)
-        self.edit_entry.bind('<Escape>', self.cancel_edit)
-        self.edit_entry.bind('<FocusOut>', self.save_edit)
-        self.edit_entry.bind('<KeyPress>', self.on_edit_keypress)
+        self.edit_entry.returnPressed.connect(self.save_edit)
+        self.edit_entry.editingFinished.connect(self.save_edit)
+        self.edit_entry.focusOutEvent = lambda event: self.cancel_edit()
+        self.edit_entry.keyPressEvent = self.on_edit_keypress
     
     def on_edit_keypress(self, event):
         """Handle keypress in edit entry - only allow digits"""
-        if event.keysym in ('BackSpace', 'Delete', 'Left', 'Right', 'Home', 'End', 'Tab'):
-            return True
-        if not event.char.isdigit():
-            return "break"
+        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete, Qt.Key_Left, Qt.Key_Right, Qt.Key_Home, Qt.Key.End, Qt.Key_Tab):
+            return
+        if not event.text().isdigit():
+            event.ignore()
     
-    def save_edit(self, event=None):
+    def save_edit(self):
         """Save the edited value"""
         if not self.edit_entry or not self.edit_item:
             return
             
-        new_value = self.edit_entry.get().strip()
+        new_value = self.edit_entry.text().strip()
         
         # Validate the new value
         try:
@@ -177,9 +196,9 @@ class KeyPresserApp:
             if interval <= 0:
                 raise ValueError("Interval must be positive")
         except ValueError:
-            messagebox.showerror(self.get_text("error_title"), 
+            QMessageBox.critical(self, self.get_text("error_title"), 
                                self.get_text("error_valid_interval"))
-            self.edit_entry.focus()
+            self.edit_entry.setFocus()
             return
         
         # Update the configuration
@@ -191,35 +210,35 @@ class KeyPresserApp:
         
         self.cleanup_edit()
     
-    def cancel_edit(self, event=None):
+    def cancel_edit(self):
         """Cancel editing without saving"""
         self.cleanup_edit()
     
     def cleanup_edit(self):
         """Clean up editing widgets and state"""
         if self.edit_entry:
-            self.edit_entry.destroy()
+            self.edit_entry.deleteLater()
             self.edit_entry = None
         self.edit_item = None
         self.edit_column = None
-        self.tree.focus()
+        self.tree.setFocus()
         
     def show_language_menu(self):
         """Show language selection menu"""
-        menu = tk.Menu(self.root, tearoff=0)
+        menu = QMenu(self)
         for lang in self.available_languages:
-            menu.add_command(
-                label=lang['name'], 
-                command=lambda l=lang['code']: self.change_language(l)
+            menu.addAction(
+                lang['name'], 
+                lambda l=lang['code']: self.change_language(l)
             )
         
         # Show menu at button position
         try:
-            x = self.language_button.winfo_rootx()
-            y = self.language_button.winfo_rooty() + self.language_button.winfo_height()
-            menu.post(x, y)
+            x = self.language_button.mapToGlobal(self.language_button.rect().bottomLeft()).x()
+            y = self.language_button.mapToGlobal(self.language_button.rect().bottomLeft()).y()
+            menu.exec(QPoint(x, y))
         except:
-            menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
+            menu.exec(QCursor.pos())
     
     def change_language(self, language_code):
         """Change application language"""
@@ -233,28 +252,26 @@ class KeyPresserApp:
 
     def update_ui_texts(self):
         """Update all UI texts with current language"""
-        self.root.title(self.get_text("app_title"))
-        self.title_label.config(text=self.get_text("app_title"))
-        self.language_button.config(text=self.get_text("language_button"))
-        self.key_label.config(text=self.get_text("key_label"))
-        self.interval_label.config(text=self.get_text("interval_label"))
-        self.add_button.config(text=self.get_text("add_button"))
-        self.remove_button.config(text=self.get_text("remove_button"))
-        self.start_button.config(text=self.get_text("start_button"))
-        self.stop_button.config(text=self.get_text("stop_button"))
+        self.setWindowTitle(self.get_text("app_title"))
+        self.title_label.setText(self.get_text("app_title"))
+        self.language_button.setText(self.get_text("language_button"))
+        self.key_label.setText(self.get_text("key_label"))
+        self.interval_label.setText(self.get_text("interval_label"))
+        self.add_button.setText(self.get_text("add_button"))
+        self.remove_button.setText(self.get_text("remove_button"))
+        self.start_button.setText(self.get_text("start_button"))
+        self.stop_button.setText(self.get_text("stop_button"))
         
         # Update treeview headers
-        self.tree.heading('#0', text=self.get_text("header_active"))
-        self.tree.heading('key', text=self.get_text("header_key"))
-        self.tree.heading('interval', text=self.get_text("header_interval"))
+        self.tree.setHeaderLabels([self.get_text("header_active"), self.get_text("header_key"), self.get_text("header_interval")])
         
         # Update status and hotkey labels
         if self.is_running:
-            self.status_label.config(text=self.get_text("status_running"))
+            self.status_label.setText(self.get_text("status_running"))
         else:
-            self.status_label.config(text=self.get_text("status_stopped"))
+            self.status_label.setText(self.get_text("status_stopped"))
         
-        self.hotkey_label.config(text=self.get_text("hotkeys_info"))
+        self.hotkey_label.setText(self.get_text("hotkeys_info"))
         
     def load_config(self):
         """Load configuration from file"""
@@ -274,7 +291,7 @@ class KeyPresserApp:
             ]
             self.save_config()
         except Exception as e:
-            messagebox.showerror("Error", f"Error loading config: {e}")
+            QMessageBox.critical(self, "Error", f"Error loading config: {e}")
     
     def save_config(self):
         """Save configuration to file"""
@@ -286,14 +303,14 @@ class KeyPresserApp:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
         except Exception as e:
-            messagebox.showerror("Error", f"Error saving config: {e}")
+            QMessageBox.critical(self, "Error", f"Error saving config: {e}")
     
     def add_key_config(self):
-        key = self.key_entry.get().strip().lower()
-        interval_text = self.interval_entry.get().strip()
+        key = self.key_entry.text().strip().lower()
+        interval_text = self.interval_entry.text().strip()
         
         if not key:
-            messagebox.showerror(self.get_text("error_title"), self.get_text("error_enter_key"))
+            QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_enter_key"))
             return
             
         try:
@@ -301,13 +318,13 @@ class KeyPresserApp:
             if interval <= 0:
                 raise ValueError("Interval must be positive")
         except ValueError:
-            messagebox.showerror(self.get_text("error_title"), self.get_text("error_valid_interval"))
+            QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_valid_interval"))
             return
             
         # Check if key already exists
         for config in self.key_configs:
             if config['key'] == key:
-                messagebox.showerror(self.get_text("error_title"), 
+                QMessageBox.critical(self, self.get_text("error_title"), 
                                    self.get_text("error_key_exists").replace('{key}', key))
                 return
                 
@@ -318,18 +335,18 @@ class KeyPresserApp:
         })
         
         self.update_tree()
-        self.key_entry.delete(0, tk.END)
-        self.interval_entry.delete(0, tk.END)
+        self.key_entry.clear()
+        self.interval_entry.clear()
         self.save_config()  # Save after adding
         
     def remove_key_config(self):
-        selection = self.tree.selection()
+        selection = self.tree.selectedItems()
         if not selection:
-            messagebox.showwarning(self.get_text("warning_title"), self.get_text("warning_select_row"))
+            QMessageBox.warning(self, self.get_text("warning_title"), self.get_text("warning_select_row"))
             return
             
         item = selection[0]
-        index = self.tree.index(item)
+        index = self.tree.indexOfTopLevelItem(item)
         
         if 0 <= index < len(self.key_configs):
             self.key_configs.pop(index)
@@ -342,45 +359,39 @@ class KeyPresserApp:
             
     def update_tree(self):
         # Clear existing items
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        self.tree.clear()
         # Remove old checkbuttons
         for cb in getattr(self, 'checkbuttons', {}).values():
-            cb.destroy()
+            cb.deleteLater()
         self.checkbuttons = {}
         self.checkbox_vars = {}
         # Add current configurations and overlay checkboxes
         for idx, config in enumerate(self.key_configs):
-            item_id = self.tree.insert('', 'end', values=(config['key'], config['interval']))
-            self.place_checkbox(item_id, idx)
+            item = QTreeWidgetItem([config['active'], config['key'], str(config['interval'])])
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.tree.addTopLevelItem(item)
+            self.place_checkbox(item, idx)
 
-    def place_checkbox(self, item_id, idx):
-        bbox = self.tree.bbox(item_id, '#0')
-        if not bbox:
-            self.root.after(10, lambda: self.place_checkbox(item_id, idx))
-            return
-        # Store BooleanVar to keep it alive
-        var = self.checkbox_vars[idx] = tk.BooleanVar(value=self.key_configs[idx]['active'])
-        cb = ttk.Checkbutton(self.tree, variable=var, command=lambda i=idx, v=var: self.on_checkbox_toggle(i, v), takefocus=0)
-        cb_width = 18
-        cb_height = 18
-        x = bbox[0] + (bbox[2] - cb_width) // 2
-        y = bbox[1] + (bbox[3] - cb_height) // 2
-        cb.place(x=x, y=y, width=cb_width, height=cb_height)
-        self.checkbuttons[item_id] = cb
+    def place_checkbox(self, item, idx):
+        # Checkboxes are now part of the QTreeWidgetItem, no manual placement needed
+        var = self.checkbox_vars[idx] = QCheckBox()
+        var.setChecked(self.key_configs[idx]['active'])
+        var.stateChanged.connect(lambda state, i=idx: self.on_checkbox_toggle(i, state))
+        self.checkbuttons[item] = var
 
-    def on_checkbox_toggle(self, idx, var):
-        self.key_configs[idx]['active'] = var.get()
+    def on_checkbox_toggle(self, idx, state):
+        self.key_configs[idx]['active'] = (state == Qt.Checked)
         self.save_config()
 
     def update_tree_checkboxes(self):
         # Reposition checkboxes after scroll/resize
-        for idx, item_id in enumerate(self.tree.get_children()):
-            self.place_checkbox(item_id, idx)
+        for idx, item in enumerate(self.tree.findItems("", Qt.MatchContains | Qt.MatchRecursive)):
+            self.place_checkbox(item, idx)
 
     def setup_hotkeys(self):
         """Setup global hotkeys for start/stop functionality"""
         try:
+            import keyboard
             keyboard.add_hotkey('f7', self.start_pressing)
             keyboard.add_hotkey('f8', self.stop_pressing)
         except Exception as e:
@@ -429,7 +440,7 @@ class KeyPresserApp:
             self.cancel_edit()
         active_configs = [config for config in self.key_configs if config['active']]
         if not active_configs:
-            messagebox.showwarning(self.get_text("warning_title"), self.get_text("warning_no_active"))
+            QMessageBox.warning(self, self.get_text("warning_title"), self.get_text("warning_no_active"))
             return
         self.is_running = True
         self.timers = {}
@@ -446,8 +457,8 @@ class KeyPresserApp:
             thread.start()
         # Disable all controls except STOP
         self.set_controls_enabled(False)
-        self.stop_button.config(state='normal')
-        self.status_label.config(text=self.get_text("status_running"), foreground="green")
+        self.stop_button.setEnabled(True)
+        self.status_label.setText(self.get_text("status_running"))
 
     def stop_pressing(self):
         if not self.is_running:
@@ -461,18 +472,19 @@ class KeyPresserApp:
                 break
         # Re-enable all controls
         self.set_controls_enabled(True)
-        self.stop_button.config(state='disabled')
-        self.status_label.config(text=self.get_text("status_stopped"), foreground="red")
+        self.stop_button.setEnabled(False)
+        self.status_label.setText(self.get_text("status_stopped"))
         
     def on_closing(self):
         """Handle application closing"""
         self.stop_pressing()
         try:
             # Remove hotkeys before closing
+            import keyboard
             keyboard.unhook_all_hotkeys()
         except:
             pass
-        self.root.destroy()
+        self.close()
 
     def get_text(self, key, **kwargs):
         return self.i18n.get_text(key, **kwargs)
@@ -483,16 +495,17 @@ class KeyPresserApp:
         if hasattr(self, 'window_combo'):
             # Update combobox with window titles
             titles = [w['title'] for w in windows]
-            self.window_combo['values'] = titles
+            self.window_combo.clear()
+            self.window_combo.addItems(titles)
             if titles:
-                self.window_combo.current(0)
+                self.window_combo.setCurrentIndex(0)
                 self.selected_window = windows[0]
             else:
                 self.selected_window = None
 
     def on_window_select(self, event=None):
         if hasattr(self, 'window_combo'):
-            idx = self.window_combo.current()
+            idx = self.window_combo.currentIndex()
             if 0 <= idx < len(self.window_list):
                 self.selected_window = self.window_list[idx]
             else:
@@ -510,31 +523,21 @@ class KeyPresserApp:
             window_utils.focus_window(win_info)
 
     def set_controls_enabled(self, enabled: bool):
-        state = 'normal' if enabled else 'disabled'
-        self.start_button.config(state=state)
-        self.add_button.config(state=state)
-        self.remove_button.config(state=state)
-        self.key_entry.config(state=state)
-        self.interval_entry.config(state=state)
-        self.tree.config(selectmode='extended' if enabled else 'none')
+        state = Qt.Enabled if enabled else Qt.Disabled
+        self.start_button.setEnabled(state)
+        self.add_button.setEnabled(state)
+        self.remove_button.setEnabled(state)
+        self.key_entry.setEnabled(state)
+        self.interval_entry.setEnabled(state)
+        self.tree.setEnabled(state)
         if hasattr(self, 'window_combo'):
-            self.window_combo.config(state='readonly' if enabled else 'disabled')
+            self.window_combo.setEnabled(state == Qt.Enabled)
 
 def main():
-    try:
-        # Check if keyboard library is available
-        import keyboard
-    except ImportError:
-        messagebox.showerror("Error", "'keyboard' library is required. Install it with: pip install keyboard")
-        return
-        
-    root = tk.Tk()
-    app = KeyPresserApp(root)
-    
-    # Handle window closing
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    
-    root.mainloop()
+    app = QApplication(sys.argv)
+    window = KeyPresserApp()
+    window.show()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
