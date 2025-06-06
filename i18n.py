@@ -85,7 +85,7 @@ class I18nManager:
             "error_keyboard_lib": "'keyboard' library is required. Install it with: pip install keyboard"
         }
         pt_texts = {
-            "app_title": "KeyPresser Deluxe do MoneyRat",
+            "app_title": "KeyPresser Deluxe por MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Adicionar",
@@ -109,7 +109,7 @@ class I18nManager:
             "error_keyboard_lib": "Biblioteca 'keyboard' é necessária. Instale com: pip install keyboard"
         }
         sp_texts = {
-            "app_title": "KeyPresser Deluxe de MoneyRat",
+            "app_title": "KeyPresser Deluxe por MoneyRat",
             "key_label": "Tecla:",
             "interval_label": "Intervalo (ms):",
             "add_button": "Agregar",
