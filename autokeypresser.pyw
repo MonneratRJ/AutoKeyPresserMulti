@@ -5,29 +5,30 @@ import queue
 import json
 import os
 
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTreeWidget, QTreeWidgetItem, QCheckBox, QMessageBox, QMenu)
-from PySide6.QtCore import Qt, QTimer, QPoint
-from PySide6.QtGui import QIcon, QPixmap, QCursor
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QMessageBox, QMenu, QLineEdit, QTreeWidgetItem, QCheckBox)
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QIcon, QCursor
 
 from i18n import I18nManager
 import style
 import window_utils
+from resource_utils import resource_path
 
 class KeyPresserApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setGeometry(100, 100, 500, 500)
         self.setWindowTitle("Auto Key Presser")
-        # Set application icon
-        if os.path.exists('autokeypresser.ico'):
-            self.setWindowIcon(QIcon('autokeypresser.ico'))
-        elif os.path.exists('autokeypresser.png'):
-            self.setWindowIcon(QIcon('autokeypresser.png'))
+        # Set application icon using resource_path for reliability
+        ico_path = resource_path('autokeypresser.ico')
+        png_path = resource_path('autokeypresser.png')
+        if os.path.exists(ico_path):
+            self.setWindowIcon(QIcon(ico_path))
+        elif os.path.exists(png_path):
+            self.setWindowIcon(QIcon(png_path))
         # Main widget and layout
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        # Remove duplicate layout assignment (already set in style.setup_ui)
-        # self.layout = QVBoxLayout(self.central_widget)
         
         # Configuration files
         self.config_file = "config.json"
@@ -73,35 +74,6 @@ class KeyPresserApp(QMainWindow):
         self.checkbuttons = {}
         self.checkbox_vars = {}
         
-        # Remove example UI elements (now handled by style.setup_ui)
-        # self.title_label = QLabel("Auto Key Presser")
-        # self.layout.addWidget(self.title_label)
-        # self.language_button = QPushButton("Language")
-        # self.layout.addWidget(self.language_button)
-        # self.key_label = QLabel("Key:")
-        # self.layout.addWidget(self.key_label)
-        # self.key_entry = QLineEdit()
-        # self.layout.addWidget(self.key_entry)
-        # self.interval_label = QLabel("Interval (ms):")
-        # self.layout.addWidget(self.interval_label)
-        # self.interval_entry = QLineEdit()
-        # self.layout.addWidget(self.interval_entry)
-        # self.add_button = QPushButton("Add")
-        # self.layout.addWidget(self.add_button)
-        # self.remove_button = QPushButton("Remove")
-        # self.layout.addWidget(self.remove_button)
-        # self.start_button = QPushButton("Start")
-        # self.layout.addWidget(self.start_button)
-        # self.stop_button = QPushButton("Stop")
-        # self.layout.addWidget(self.stop_button)
-        # self.status_label = QLabel("Status: Stopped")
-        # self.layout.addWidget(self.status_label)
-        # self.hotkey_label = QLabel("Hotkeys: F7 to Start, F8 to Stop")
-        # self.layout.addWidget(self.hotkey_label)
-        # self.tree = QTreeWidget()
-        # self.tree.setHeaderLabels(["Active", "Key", "Interval"])
-        # self.layout.addWidget(self.tree)
-        
         # Connect signals (replace with full logic)
         self.add_button.clicked.connect(self.add_key_config)
         self.remove_button.clicked.connect(self.remove_key_config)
@@ -109,21 +81,6 @@ class KeyPresserApp(QMainWindow):
         self.stop_button.clicked.connect(self.stop_pressing)
         self.language_button.clicked.connect(self.show_language_menu)
         self.tree.itemDoubleClicked.connect(self.on_double_click)
-        
-        # Example: Set default key and interval
-        # self.key_entry.setText("z")
-        # self.interval_entry.setText("1000")
-    
-    def on_single_click(self, event):
-        """Handle single click to cancel editing if clicking elsewhere"""
-        if self.edit_entry:
-            # Check if click is not on the edit entry
-            try:
-                widget = event.widget.winfo_containing(event.x_root, event.y_root)
-                if widget != self.edit_entry:
-                    self.cancel_edit()
-            except:
-                self.cancel_edit()
     
     def on_double_click(self, item, column):
         """Handle double click for toggling active state or editing interval"""
@@ -353,10 +310,6 @@ class KeyPresserApp(QMainWindow):
             self.update_tree()
             self.save_config()  # Save after removing
             
-    def toggle_active(self, event):
-        """Legacy method - now handled by on_double_click"""
-        pass
-            
     def update_tree(self):
         # Clear existing items
         self.tree.clear()
@@ -535,6 +488,13 @@ class KeyPresserApp(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    # Set the application icon on QApplication as early as possible
+    ico_path = os.path.abspath('autokeypresser.ico')
+    png_path = os.path.abspath('autokeypresser.png')
+    if os.path.exists(ico_path):
+        app.setWindowIcon(QIcon(ico_path))
+    elif os.path.exists(png_path):
+        app.setWindowIcon(QIcon(png_path))
     window = KeyPresserApp()
     window.show()
     sys.exit(app.exec())

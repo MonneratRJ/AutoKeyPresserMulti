@@ -1,18 +1,17 @@
-from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTreeWidget, QTreeWidgetItem, QCheckBox, QMessageBox, QWidget, QScrollBar)
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTreeWidget)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
+from resource_utils import resource_path
 
 def setup_ui(app):
-    # Main vertical layout
+    app.setFixedSize(500, 500)
     main_layout = QVBoxLayout(app.central_widget)
 
-    # Header: Title label
     app.title_label = QLabel("MoneyRat's KeyPresser Deluxe")
     app.title_label.setAlignment(Qt.AlignCenter)
     app.title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
     main_layout.addWidget(app.title_label)
 
-    # Header row: window selector left, language button right
     header_row = QHBoxLayout()
     app.window_combo = QComboBox()
     app.window_combo.setEditable(False)
@@ -24,7 +23,6 @@ def setup_ui(app):
     header_row.addWidget(app.language_button, stretch=0)
     main_layout.addLayout(header_row)
 
-    # Entry row: key, interval, add/remove
     entry_row = QHBoxLayout()
     app.key_label = QLabel("Key:")
     entry_row.addWidget(app.key_label)
@@ -42,7 +40,6 @@ def setup_ui(app):
     entry_row.addWidget(app.remove_button)
     main_layout.addLayout(entry_row)
 
-    # Table: QTreeWidget for key configs
     app.tree = QTreeWidget()
     app.tree.setHeaderLabels(["Active", "Key", "Interval (ms)"])
     app.tree.setColumnCount(3)
@@ -52,7 +49,6 @@ def setup_ui(app):
     app.tree.itemDoubleClicked.connect(app.on_double_click)
     main_layout.addWidget(app.tree, stretch=1)
 
-    # Control buttons row
     button_row = QHBoxLayout()
     app.start_button = QPushButton("Start")
     button_row.addWidget(app.start_button)
@@ -61,7 +57,6 @@ def setup_ui(app):
     button_row.addWidget(app.stop_button)
     main_layout.addLayout(button_row)
 
-    # Status and info labels
     app.status_label = QLabel("Status: Stopped")
     app.status_label.setStyleSheet("color: red;")
     main_layout.addWidget(app.status_label)
@@ -72,12 +67,11 @@ def setup_ui(app):
     app.edit_info_label.setStyleSheet("color: gray; font-size: 10px;")
     main_layout.addWidget(app.edit_info_label)
 
-    # PayPal Donate button at the bottom
     def open_paypal():
         import webbrowser
         webbrowser.open_new("https://www.paypal.com/donate/?business=RFHNR4TM6KPQ4&no_recurring=0&item_name=A+brazilian+software+developer+and+maker+that+enjoys+giving+back+to+the+community.+Help+me+back+if+you+can.+Much+appreciated%21&currency_code=BRL")
     try:
-        pixmap = QPixmap("paypaldonatebutton.png")
+        pixmap = QPixmap(resource_path("paypaldonatebutton.png"))
         if not pixmap.isNull():
             scaled = pixmap.scaledToWidth(140, Qt.SmoothTransformation)
             app.paypal_button = QPushButton()
@@ -92,17 +86,13 @@ def setup_ui(app):
         app.paypal_button.clicked.connect(open_paypal)
         main_layout.addWidget(app.paypal_button, alignment=Qt.AlignCenter)
 
-    # Connect signals (moved from autokeypresser.pyw)
     app.add_button.clicked.connect(app.add_key_config)
     app.remove_button.clicked.connect(app.remove_key_config)
     app.start_button.clicked.connect(app.start_pressing)
     app.stop_button.clicked.connect(app.stop_pressing)
     app.language_button.clicked.connect(app.show_language_menu)
     app.tree.itemDoubleClicked.connect(app.on_double_click)
-    # Set default key and interval
     app.key_entry.setText("z")
     app.interval_entry.setText("1000")
-
-    # Store references for checkboxes
     app.checkbuttons = {}
     app.checkbox_vars = {}
