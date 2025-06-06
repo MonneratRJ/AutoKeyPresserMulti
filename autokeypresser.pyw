@@ -432,17 +432,10 @@ class KeyPresserApp:
             self.timers[timer_id] = thread
             thread.start()
         # Disable all controls except STOP
-        self.start_button.config(state='disabled')
+        self.set_controls_enabled(False)
         self.stop_button.config(state='normal')
-        self.add_button.config(state='disabled')
-        self.remove_button.config(state='disabled')
-        self.key_entry.config(state='disabled')
-        self.interval_entry.config(state='disabled')
-        self.tree.config(selectmode='none')
-        if hasattr(self, 'window_combo'):
-            self.window_combo.config(state='disabled')
         self.status_label.config(text=self.get_text("status_running"), foreground="green")
-        
+
     def stop_pressing(self):
         if not self.is_running:
             return
@@ -454,15 +447,8 @@ class KeyPresserApp:
             except queue.Empty:
                 break
         # Re-enable all controls
-        self.start_button.config(state='normal')
+        self.set_controls_enabled(True)
         self.stop_button.config(state='disabled')
-        self.add_button.config(state='normal')
-        self.remove_button.config(state='normal')
-        self.key_entry.config(state='normal')
-        self.interval_entry.config(state='normal')
-        self.tree.config(selectmode='extended')
-        if hasattr(self, 'window_combo'):
-            self.window_combo.config(state='readonly')
         self.status_label.config(text=self.get_text("status_stopped"), foreground="red")
         
     def on_closing(self):
@@ -509,6 +495,17 @@ class KeyPresserApp:
         win_info = self.get_selected_window_info()
         if win_info:
             window_utils.focus_window(win_info)
+
+    def set_controls_enabled(self, enabled: bool):
+        state = 'normal' if enabled else 'disabled'
+        self.start_button.config(state=state)
+        self.add_button.config(state=state)
+        self.remove_button.config(state=state)
+        self.key_entry.config(state=state)
+        self.interval_entry.config(state=state)
+        self.tree.config(selectmode='extended' if enabled else 'none')
+        if hasattr(self, 'window_combo'):
+            self.window_combo.config(state='readonly' if enabled else 'disabled')
 
 def main():
     try:
