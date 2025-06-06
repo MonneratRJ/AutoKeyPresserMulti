@@ -14,16 +14,29 @@ class KeyPresserApp:
         self.root = root
         self.root.geometry("500x500")
 
-        # Set application icon
-        icon_path = 'autokeypresser.png'  # or .ico
+        # Set application icon (prefer .ico for taskbar and window)
+        import os
         try:
-            img = tk.PhotoImage(file=icon_path)
-            self.root.tk.call('wm', 'iconphoto', self.root._w, img)
-        except:
-            try:
+            if os.path.exists('autokeypresser.ico'):
                 self.root.iconbitmap('autokeypresser.ico')
-            except:
-                pass  # Silently fail if no icon is found
+                # Also set iconphoto for best compatibility (convert .ico to .png in memory)
+                try:
+                    from PIL import Image, ImageTk
+                    img = Image.open('autokeypresser.ico')
+                    # Use the largest available icon in the .ico file
+                    sizes = img.info.get('sizes', [])
+                    if sizes:
+                        img = img.copy().resize(sizes[-1])
+                    img = ImageTk.PhotoImage(img)
+                    self.root.iconphoto(True, img)
+                    self._iconphoto_ref = img  # Prevent garbage collection
+                except Exception:
+                    pass
+            else:
+                img = tk.PhotoImage(file='autokeypresser.png')
+                self.root.tk.call('wm', 'iconphoto', self.root._w, img)
+        except Exception:
+            pass  # Silently fail if no icon is found
         
         # Configuration files
         self.config_file = "config.json"

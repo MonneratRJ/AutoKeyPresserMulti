@@ -16,6 +16,8 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+dist_dir = 'dist'
+
 exe = EXE(
     pyz,
     a.scripts,
