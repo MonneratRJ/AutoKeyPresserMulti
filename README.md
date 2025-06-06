@@ -161,3 +161,29 @@ Cada tecla opera independientemente con su propio temporizador. Esto significa:
   ]
 }
 ```
+
+## Building a Standalone Executable (Windows)
+
+You can package this app as a single .exe file (with icon and all resources) using PyInstaller and the provided `autokeypresser.spec` file.
+
+### Steps:
+
+1. **Install PyInstaller** (if not already installed):
+   ```powershell
+   pip install pyinstaller
+   ```
+
+2. **Build the Executable**
+   From the project directory, run:
+   ```powershell
+   python -m PyInstaller autokeypresser.spec
+   ```
+   This will use all the settings and data files defined in the `.spec` file, including the application icon (`autokeypresser.ico`).
+
+3. **Find Your Executable**
+   The resulting `.exe` will be in the `dist` folder as `autokeypresser.exe`.
+
+4. **Distribute**
+   You can now send the `.exe` to others. They do **not** need Python or pip installed.
+
+---
