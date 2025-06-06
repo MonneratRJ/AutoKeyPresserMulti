@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTreeWidget)
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QCheckBox, QWidget)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from resource_utils import resource_path
@@ -40,14 +40,15 @@ def setup_ui(app):
     entry_row.addWidget(app.remove_button)
     main_layout.addLayout(entry_row)
 
-    app.tree = QTreeWidget()
-    app.tree.setHeaderLabels(["Active", "Key", "Interval (ms)"])
-    app.tree.setColumnCount(3)
-    app.tree.setRootIsDecorated(False)
-    app.tree.setAlternatingRowColors(True)
-    app.tree.setSelectionMode(QTreeWidget.SingleSelection)
-    app.tree.itemDoubleClicked.connect(app.on_double_click)
-    main_layout.addWidget(app.tree, stretch=1)
+    app.table = QTableWidget()
+    app.table.setColumnCount(3)
+    app.table.setHorizontalHeaderLabels(["Active", "Key", "Interval (ms)"])
+    app.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    app.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+    app.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked)
+    app.table.setAlternatingRowColors(True)
+    app.table.setStyleSheet("QTableWidget::item { text-align: center; } QTableWidget::indicator { margin-left: auto; margin-right: auto; }")
+    main_layout.addWidget(app.table, stretch=1)
 
     button_row = QHBoxLayout()
     app.start_button = QPushButton("Start")
@@ -91,8 +92,42 @@ def setup_ui(app):
     app.start_button.clicked.connect(app.start_pressing)
     app.stop_button.clicked.connect(app.stop_pressing)
     app.language_button.clicked.connect(app.show_language_menu)
-    app.tree.itemDoubleClicked.connect(app.on_double_click)
+    app.table.itemDoubleClicked.connect(app.on_double_click)
     app.key_entry.setText("z")
     app.interval_entry.setText("1000")
     app.checkbuttons = {}
     app.checkbox_vars = {}
+
+    def update_table():
+        app.table.setRowCount(0)
+        for idx, config in enumerate(app.key_configs):
+            app.table.insertRow(idx)
+            checkbox = QCheckBox()
+            checkbox.setChecked(config['active'])
+            checkbox.setStyleSheet("margin-left:auto; margin-right:auto;")
+            def on_state_changed(state, row=idx):
+                app.key_configs[row]['active'] = (state == Qt.Checked)
+                if hasattr(app, 'save_config'):
+                    app.save_config()
+            checkbox.stateChanged.connect(on_state_changed)
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            layout.addWidget(checkbox)
+            layout.setAlignment(Qt.AlignCenter)
+            layout.setContentsMargins(0, 0, 0, 0)
+            widget.setLayout(layout)
+            app.table.setCellWidget(idx, 0, widget)
+            key_item = QTableWidgetItem(config['key'])
+            key_item.setTextAlignment(Qt.AlignCenter)
+            app.table.setItem(idx, 1, key_item)
+            interval_item = QTableWidgetItem(str(config['interval']))
+            interval_item.setTextAlignment(Qt.AlignCenter)
+            app.table.setItem(idx, 2, interval_item)
+    app.update_table = update_table
+
+    app.table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
+    app.table.setStyleSheet("""
+        QTableWidget::item { text-align: center; }
+        QHeaderView::section { text-align: center; }
+        QTableWidget::indicator { margin-left: auto; margin-right: auto; }
+    """)

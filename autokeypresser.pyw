@@ -5,7 +5,7 @@ import queue
 import json
 import os
 
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QMessageBox, QMenu, QLineEdit, QTreeWidgetItem, QCheckBox)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QMessageBox, QMenu, QLineEdit, QTableWidgetItem, QCheckBox)
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QIcon, QCursor
 
@@ -64,122 +64,41 @@ class KeyPresserApp(QMainWindow):
         style.setup_ui(self)
         self.setup_hotkeys()
         self.update_ui_texts()
-        self.update_tree()
+        self.update_table()
         self.update_window_list()
-        
         # After UI setup, update window list
         self.update_window_list()
-        
-        # Store references to checkbuttons and their variables
-        self.checkbuttons = {}
-        self.checkbox_vars = {}
-        
         # Connect signals (replace with full logic)
         self.add_button.clicked.connect(self.add_key_config)
         self.remove_button.clicked.connect(self.remove_key_config)
         self.start_button.clicked.connect(self.start_pressing)
         self.stop_button.clicked.connect(self.stop_pressing)
         self.language_button.clicked.connect(self.show_language_menu)
-        self.tree.itemDoubleClicked.connect(self.on_double_click)
-    
+        self.table.itemDoubleClicked.connect(self.on_double_click)
+        self.table.itemChanged.connect(self.on_table_item_changed)
+        self._updating_table = False
+
     def on_double_click(self, item, column):
-        """Handle double click for toggling active state or editing interval"""
         if self.is_running:
-            return  # Don't allow editing while running
-            
-        # Cancel any existing edit
-        if self.edit_entry:
-            self.cancel_edit()
-            
+            return
         if column == 2:  # Interval column
-            self.start_edit(item, 'interval', item.treeWidget().visualItemRect(item).x() + item.treeWidget().header().sectionSize(2), item.treeWidget().visualItemRect(item).y())
-    
+            self.start_edit(item, column)
+
     def toggle_active_by_item(self, item):
-        """Toggle active state for a specific tree item"""
-        index = self.tree.index(item)
+        """Toggle active state for a specific table item"""
+        index = self.table.index(item)
         if 0 <= index < len(self.key_configs):
             self.key_configs[index]['active'] = not self.key_configs[index]['active']
-            self.update_tree()
+            self.update_table()
             self.save_config()
     
-    def start_edit(self, item, column, x, y):
-        """Start editing a cell"""
+    def start_edit(self, item, column):
         if self.is_running:
             return
-            
-        self.edit_item = item
-        self.edit_column = column
-        
-        # Get current value
-        index = self.tree.index(item)
-        if column == 'interval' and 0 <= index < len(self.key_configs):
-            current_value = str(self.key_configs[index]['interval'])
-        else:
-            return
-            
-        # Create entry widget
-        self.edit_entry = QLineEdit(self.tree)
-        self.edit_entry.setFrame(True)
-        self.edit_entry.setGeometry(x, y, 100, 20)
-        
-        # Set current value and select all
-        self.edit_entry.setText(current_value)
-        self.edit_entry.selectAll()
-        self.edit_entry.setFocus()
-        
-        # Bind events
-        self.edit_entry.returnPressed.connect(self.save_edit)
-        self.edit_entry.editingFinished.connect(self.save_edit)
-        self.edit_entry.focusOutEvent = lambda event: self.cancel_edit()
-        self.edit_entry.keyPressEvent = self.on_edit_keypress
+        row = item.row()
+        if column == 2 and 0 <= row < len(self.key_configs):
+            self.table.editItem(self.table.item(row, column))
     
-    def on_edit_keypress(self, event):
-        """Handle keypress in edit entry - only allow digits"""
-        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete, Qt.Key_Left, Qt.Key_Right, Qt.Key_Home, Qt.Key.End, Qt.Key_Tab):
-            return
-        if not event.text().isdigit():
-            event.ignore()
-    
-    def save_edit(self):
-        """Save the edited value"""
-        if not self.edit_entry or not self.edit_item:
-            return
-            
-        new_value = self.edit_entry.text().strip()
-        
-        # Validate the new value
-        try:
-            interval = int(new_value)
-            if interval <= 0:
-                raise ValueError("Interval must be positive")
-        except ValueError:
-            QMessageBox.critical(self, self.get_text("error_title"), 
-                               self.get_text("error_valid_interval"))
-            self.edit_entry.setFocus()
-            return
-        
-        # Update the configuration
-        index = self.tree.index(self.edit_item)
-        if 0 <= index < len(self.key_configs):
-            self.key_configs[index]['interval'] = interval
-            self.update_tree()
-            self.save_config()
-        
-        self.cleanup_edit()
-    
-    def cancel_edit(self):
-        """Cancel editing without saving"""
-        self.cleanup_edit()
-    
-    def cleanup_edit(self):
-        """Clean up editing widgets and state"""
-        if self.edit_entry:
-            self.edit_entry.deleteLater()
-            self.edit_entry = None
-        self.edit_item = None
-        self.edit_column = None
-        self.tree.setFocus()
-        
     def show_language_menu(self):
         """Show language selection menu"""
         menu = QMenu(self)
@@ -218,16 +137,16 @@ class KeyPresserApp(QMainWindow):
         self.remove_button.setText(self.get_text("remove_button"))
         self.start_button.setText(self.get_text("start_button"))
         self.stop_button.setText(self.get_text("stop_button"))
-        
-        # Update treeview headers
-        self.tree.setHeaderLabels([self.get_text("header_active"), self.get_text("header_key"), self.get_text("header_interval")])
-        
-        # Update status and hotkey labels
+        # Update table headers for QTableWidget
+        self.table.setHorizontalHeaderLabels([
+            self.get_text("header_active"),
+            self.get_text("header_key"),
+            self.get_text("header_interval")
+        ])
         if self.is_running:
             self.status_label.setText(self.get_text("status_running"))
         else:
             self.status_label.setText(self.get_text("status_stopped"))
-        
         self.hotkey_label.setText(self.get_text("hotkeys_info"))
         
     def load_config(self):
@@ -291,55 +210,57 @@ class KeyPresserApp(QMainWindow):
             'active': True
         })
         
-        self.update_tree()
+        self.update_table()
         self.key_entry.clear()
         self.interval_entry.clear()
         self.save_config()  # Save after adding
         
     def remove_key_config(self):
-        selection = self.tree.selectedItems()
+        selection = self.table.selectedItems()
         if not selection:
             QMessageBox.warning(self, self.get_text("warning_title"), self.get_text("warning_select_row"))
             return
             
-        item = selection[0]
-        index = self.tree.indexOfTopLevelItem(item)
-        
-        if 0 <= index < len(self.key_configs):
-            self.key_configs.pop(index)
-            self.update_tree()
+        row = selection[0].row()
+        if 0 <= row < len(self.key_configs):
+            self.key_configs.pop(row)
+            self.update_table()
             self.save_config()  # Save after removing
             
-    def update_tree(self):
-        # Clear existing items
-        self.tree.clear()
-        # Remove old checkbuttons
-        for cb in getattr(self, 'checkbuttons', {}).values():
-            cb.deleteLater()
-        self.checkbuttons = {}
-        self.checkbox_vars = {}
-        # Add current configurations and overlay checkboxes
+    def on_table_item_changed(self, item):
+        if self._updating_table or self.is_running:
+            return
+        row = item.row()
+        col = item.column()
+        if 0 <= row < len(self.key_configs):
+            if col == 0:  # Active checkbox
+                self.key_configs[row]['active'] = (item.checkState() == Qt.Checked)
+                self.save_config()
+            elif col == 2:  # Interval
+                try:
+                    interval = int(item.text())
+                    if interval <= 0:
+                        raise ValueError
+                    self.key_configs[row]['interval'] = interval
+                    self.save_config()
+                except ValueError:
+                    QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_valid_interval"))
+                    self._updating_table = True
+                    item.setText(str(self.key_configs[row]['interval']))
+                    self._updating_table = False
+
+    def update_table(self):
+        self._updating_table = True
+        self.table.setRowCount(0)
         for idx, config in enumerate(self.key_configs):
-            item = QTreeWidgetItem([config['active'], config['key'], str(config['interval'])])
-            item.setFlags(item.flags() | Qt.ItemIsEditable)
-            self.tree.addTopLevelItem(item)
-            self.place_checkbox(item, idx)
-
-    def place_checkbox(self, item, idx):
-        # Checkboxes are now part of the QTreeWidgetItem, no manual placement needed
-        var = self.checkbox_vars[idx] = QCheckBox()
-        var.setChecked(self.key_configs[idx]['active'])
-        var.stateChanged.connect(lambda state, i=idx: self.on_checkbox_toggle(i, state))
-        self.checkbuttons[item] = var
-
-    def on_checkbox_toggle(self, idx, state):
-        self.key_configs[idx]['active'] = (state == Qt.Checked)
-        self.save_config()
-
-    def update_tree_checkboxes(self):
-        # Reposition checkboxes after scroll/resize
-        for idx, item in enumerate(self.tree.findItems("", Qt.MatchContains | Qt.MatchRecursive)):
-            self.place_checkbox(item, idx)
+            self.table.insertRow(idx)
+            active_item = QTableWidgetItem()
+            active_item.setFlags(active_item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            active_item.setCheckState(Qt.Checked if config['active'] else Qt.Unchecked)
+            self.table.setItem(idx, 0, active_item)
+            self.table.setItem(idx, 1, QTableWidgetItem(config['key']))
+            self.table.setItem(idx, 2, QTableWidgetItem(str(config['interval'])))
+        self._updating_table = False
 
     def setup_hotkeys(self):
         """Setup global hotkeys for start/stop functionality"""
@@ -444,9 +365,8 @@ class KeyPresserApp(QMainWindow):
 
     def update_window_list(self):
         windows = window_utils.list_windows()
-        self.window_list = windows  # Store full window info dicts
+        self.window_list = windows
         if hasattr(self, 'window_combo'):
-            # Update combobox with window titles
             titles = [w['title'] for w in windows]
             self.window_combo.clear()
             self.window_combo.addItems(titles)
@@ -482,7 +402,7 @@ class KeyPresserApp(QMainWindow):
         self.remove_button.setEnabled(state)
         self.key_entry.setEnabled(state)
         self.interval_entry.setEnabled(state)
-        self.tree.setEnabled(state)
+        self.table.setEnabled(state)
         if hasattr(self, 'window_combo'):
             self.window_combo.setEnabled(state == Qt.Enabled)
 
