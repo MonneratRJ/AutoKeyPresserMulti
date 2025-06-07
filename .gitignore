@@ -2,7 +2,6 @@
 # These files are generated and should not be tracked by git
 __pycache__
 build/
-dist/
 config.json
 locales.json
 en.txt

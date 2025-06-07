@@ -1,183 +1,88 @@
 # Auto Key Presser - README
 
-## English (EN)
+## Download
 
-### Overview
-Auto Key Presser is a utility application that automatically presses specified keys at defined intervals. It's useful for gaming, automation, or any scenario where repetitive key presses are needed.
+Executable users: You can download the ready-to-run .exe from the repository's `dist` folder: <repository-url>/dist
 
-### Key Features
-- Add/remove keys with custom intervals
-- Toggle active/inactive for each key
-- Global hotkeys (F7=Start, F8=Stop)
-- Multi-language support
-- Persistent configuration
+## Features
 
-### How to Use
-1. **Adding Keys**:
-   - Enter the key in the "Key" field (e.g., 'z', 'space', 'f1')
-   - Enter the interval in milliseconds (1000ms = 1 second)
-   - Click "Add"
+- **Automatic Key Pressing:** Configure any number of keys to be pressed automatically at custom intervals (in milliseconds).
+- **Per-Key Enable/Disable:** Each key can be toggled active/inactive individually using a real checkbox in the table.
+- **Window Picker:** Select the exact window that should receive the key presses from a live dropdown list of open windows. Key presses are only sent to the selected window, ensuring safe and targeted automation.
+- **Add/Remove Keys Easily:** Add new key+interval pairs with a simple form. Remove any key by selecting its row and clicking "Remove".
+- **Edit Intervals On-the-Fly:** Double-click the interval cell to change the timing for any key.
+- **Multi-language Support:** Instantly switch between English, Portuguese, and Spanish (or add your own language file).
+- **Global Hotkeys:** Start/Stop automation from anywhere using F7 (Start) and F8 (Stop).
+- **Persistent Configuration:** All your settings and key lists are saved and restored automatically.
+- **Modern, Intuitive UI:** Clean, resizable interface with a PayPal donate button and clear status indicators.
 
-2. **Removing Keys**:
-   - Select a key in the list
-   - Click "Remove"
+## How to Use
 
-3. **Toggling Active/Inactive**:
-   - Double-click on the checkmark (✓/✗) in the "Active" column
+### 1. Window Picker
 
-4. **Starting/Stopping**:
-   - Click "Start" to begin auto-pressing active keys
-   - Click "Stop" to halt the process
-   - Or use hotkeys: F7 (Start), F8 (Stop)
+- At the top, use the dropdown to select the window that should receive the key presses. Only the selected window will be targeted.
+- The list updates automatically to show all open windows.
 
-### Key Behavior
-Each key operates independently with its own timer. This means:
-- Different keys can have different intervals
-- Keys will press at their scheduled times without waiting for others
-- The app manages key presses efficiently to prevent conflicts
+### 2. Adding Keys
 
-### Adding New Languages
-1. Create a new text file (e.g., "fr.txt" for French)
-2. Add all required key-value pairs (copy structure from existing language files)
-3. Edit the values with your translations
-4. Add the language to locales.json:
-```json
-{
-  "languages": [
-    ...,
-    {
-      "code": "fr",
-      "name": "Français",
-      "file": "fr.txt"
-    }
-  ]
-}
-```
+- Enter the key you want to automate (e.g., `z`, `space`, `f1`) in the "Key" field.
+- Enter the interval in milliseconds (e.g., `1000` for 1 second) in the "Interval (ms)" field.
+- Click "Add" to insert the new key into the table. It will be enabled by default.
 
-## Português (PT)
+### 3. Removing Keys
 
-### Visão Geral
-O Auto Key Presser é um aplicativo utilitário que pressiona teclas especificadas em intervalos definidos. É útil para jogos, automação ou qualquer cenário onde pressionamentos repetitivos de teclas são necessários.
+- Click on a row in the table to select it.
+- Click "Remove" to delete that key from the list.
 
-### Principais Recursos
-- Adicionar/remover teclas com intervalos personalizados
-- Alternar ativo/inativo para cada tecla
-- Atalhos globais (F7=Iniciar, F8=Parar)
-- Suporte a múltiplos idiomas
-- Configuração persistente
+### 4. Enabling/Disabling Keys
 
-### Como Usar
-1. **Adicionando Teclas**:
-   - Digite a tecla no campo "Tecla" (ex: 'z', 'space', 'f1')
-   - Digite o intervalo em milissegundos (1000ms = 1 segundo)
-   - Clique em "Adicionar"
+- Use the checkbox in the "Active" column to enable or disable each key individually.
+- Only checked (active) keys will be pressed when automation is running.
 
-2. **Removendo Teclas**:
-   - Selecione uma tecla na lista
-   - Clique em "Remover"
+### 5. Editing Intervals
 
-3. **Alternando Ativo/Inativo**:
-   - Clique duas vezes no símbolo (✓/✗) na coluna "Ativo"
+- Double-click the interval cell for any key to edit its timing.
+- Enter a new value in milliseconds and press Enter.
 
-4. **Iniciando/Parando**:
-   - Clique em "Iniciar" para começar o pressionamento automático
-   - Clique em "Parar" para interromper o processo
-   - Ou use os atalhos: F7 (Iniciar), F8 (Parar)
+### 6. Starting and Stopping
 
-### Comportamento das Teclas
-Cada tecla opera independentemente com seu próprio temporizador. Isso significa:
-- Teclas diferentes podem ter intervalos diferentes
-- As teclas serão pressionadas em seus horários agendados sem esperar pelas outras
-- O aplicativo gerencia os pressionamentos de forma eficiente para evitar conflitos
+- Click "Start" to begin pressing all active keys at their configured intervals, targeted to the selected window.
+- Click "Stop" to halt all automation.
+- You can also use the global hotkeys: F7 (Start) and F8 (Stop).
 
-### Adicionando Novos Idiomas
-1. Crie um novo arquivo de texto (ex: "fr.txt" para Francês)
-2. Adicione todos os pares chave-valor necessários (copie a estrutura dos arquivos existentes)
-3. Edite os valores com suas traduções
-4. Adicione o idioma ao locales.json:
-```json
-{
-  "languages": [
-    ...,
-    {
-      "code": "fr",
-      "name": "Français",
-      "file": "fr.txt"
-    }
-  ]
-}
-```
+### 7. Language Selection
 
-## Español (ESP)
+- Click the "Language" button to instantly switch the app's language.
 
-### Resumen
-Auto Key Presser es una aplicación utilitaria que presiona teclas específicas en intervalos definidos. Es útil para juegos, automatización o cualquier escenario donde se necesiten pulsaciones repetitivas de teclas.
+### 8. Donate
 
-### Características Principales
-- Añadir/eliminar teclas con intervalos personalizados
-- Alternar activo/inactivo para cada tecla
-- Atajos globales (F7=Iniciar, F8=Detener)
-- Soporte para múltiples idiomas
-- Configuración persistente
+- Click the PayPal button at the bottom to support the developer if you find the app useful!
 
-### Cómo Usar
-1. **Añadir Teclas**:
-   - Ingrese la tecla en el campo "Tecla" (ej: 'z', 'space', 'f1')
-   - Ingrese el intervalo en milisegundos (1000ms = 1 segundo)
-   - Haga clic en "Agregar"
+---
 
-2. **Eliminar Teclas**:
-   - Seleccione una tecla en la lista
-   - Haga clic en "Eliminar"
+For advanced usage, adding new languages, or building your own executable, see the rest of this README and the repository documentation.
 
-3. **Alternar Activo/Inactivo**:
-   - Haga doble clic en el símbolo (✓/✗) en la columna "Activo"
+## Advanced Usage
 
-4. **Iniciar/Detener**:
-   - Haga clic en "Iniciar" para comenzar el presionado automático
-   - Haga clic en "Detener" para interrumpir el proceso
-   - O use los atajos: F7 (Iniciar), F8 (Detener)
-
-### Comportamiento de las Teclas
-Cada tecla opera independientemente con su propio temporizador. Esto significa:
-- Diferentes teclas pueden tener diferentes intervalos
-- Las teclas se presionarán en sus tiempos programados sin esperar a otras
-- La aplicación gestiona las pulsaciones eficientemente para prevenir conflictos
-
-### Añadir Nuevos Idiomas
-1. Cree un nuevo archivo de texto (ej: "fr.txt" para Francés)
-2. Añada todos los pares clave-valor necesarios (copie la estructura de archivos existentes)
-3. Edite los valores con sus traducciones
-4. Añada el idioma a locales.json:
-```json
-{
-  "languages": [
-    ...,
-    {
-      "code": "fr",
-      "name": "Français",
-      "file": "fr.txt"
-    }
-  ]
-}
-```
-
-## Building a Standalone Executable (Windows)
+### Building a Standalone Executable (Windows)
 
 You can package this app as a single .exe file (with icon and all resources) using PyInstaller and the provided `autokeypresser.spec` file.
 
-### Steps:
+#### Steps:
 
 1. **Install PyInstaller** (if not already installed):
+
    ```powershell
    pip install pyinstaller
    ```
 
 2. **Build the Executable**
    From the project directory, run:
+
    ```powershell
    python -m PyInstaller autokeypresser.spec
    ```
+
    This will use all the settings and data files defined in the `.spec` file, including the application icon (`autokeypresser.ico`).
 
 3. **Find Your Executable**
@@ -186,4 +91,32 @@ You can package this app as a single .exe file (with icon and all resources) usi
 4. **Distribute**
    You can now send the `.exe` to others. They do **not** need Python or pip installed.
 
----
+## Multi-language Support
+
+To add a new language:
+
+1. Create a new text file (e.g., "fr.txt" for French)
+2. Add all required key-value pairs (copy structure from existing language files)
+3. Edit the values with your translations
+4. Add the language to `locales.json`:
+
+```json
+{
+  "languages": [
+    ...,
+    {
+      "code": "fr",
+      "name": "Français",
+      "file": "fr.txt"
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+- **Keys Not Pressing:** Ensure the correct window is selected in the Window Picker. Check that the keys are active (checked) in the list.
+- **Interval Changes Not Saving:** Make sure to press Enter after typing a new interval. The row should update to show the new value.
+- **Language Not Changing:** If the language doesn't change, ensure the language file is correctly formatted and added to `locales.json`.
+
+For further issues, consult the repository's issue tracker or documentation.
