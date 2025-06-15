@@ -1,25 +1,439 @@
 import sys
+import threading
+import time
+import queue
+import json
 import os
-import logging
 
-# Set up logging
-logging.basicConfig(filename='app.log', level=logging.DEBUG,
-                   format='%(asctime)s - %(levelname)s - %(message)s')
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QMessageBox, QMenu, QLineEdit, QTableWidgetItem, QCheckBox)
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QIcon, QCursor
 
-# Add the project root to sys.path
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+from i18n import I18nManager
+import style
+import window_utils
+from resource_utils import resource_path
 
-try:
-    from views.ui import TimerUI
-    logging.info("Successfully imported TimerUI")
+class KeyPresserApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setGeometry(100, 100, 500, 500)
+        self.setWindowTitle("Auto Key Presser")
+        # Set application icon using resource_path for reliability
+        ico_path = resource_path('autokeypresser.ico')
+        png_path = resource_path('autokeypresser.png')
+        if os.path.exists(ico_path):
+            self.setWindowIcon(QIcon(ico_path))
+        elif os.path.exists(png_path):
+            self.setWindowIcon(QIcon(png_path))
+        # Main widget and layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        
+        # Configuration files
+        self.config_file = "config.json"
+        self.locales_file = "locales.json"
+        
+        # Language and localization
+        self.i18n = I18nManager()
+        self.current_language = self.i18n.get_current_language()
+        self.texts = self.i18n.texts
+        self.available_languages = self.i18n.get_available_languages()
+        
+        # Data storage
+        self.key_configs = []
+        self.timers = {}
+        self.is_running = False
+        
+        # Key press queue and lock for synchronization
+        self.key_queue = queue.Queue()
+        self.key_lock = threading.Lock()
+        self.key_press_thread = None
+        
+        # Editing state
+        self.edit_entry = None
+        self.edit_item = None
+        self.edit_column = None
+        
+        # Window selection
+        self.selected_window = None
+        
+        # Load configuration and language
+        self.load_config()
+        # All UI setup and signal connections are handled in style.setup_ui(self)
+        style.setup_ui(self)
+        self.setup_hotkeys()
+        self.update_ui_texts()
+        self.update_table()
+        self.update_window_list()
+        # After UI setup, update window list
+        self.update_window_list()
+        # Connect signals (replace with full logic)
+        self.add_button.clicked.connect(self.add_key_config)
+        self.remove_button.clicked.connect(self.remove_key_config)
+        self.start_button.clicked.connect(self.start_pressing)
+        self.stop_button.clicked.connect(self.stop_pressing)
+        self.language_button.clicked.connect(self.show_language_menu)
+        self.table.itemDoubleClicked.connect(self.on_double_click)
+        self.table.itemChanged.connect(self.on_table_item_changed)
+        self._updating_table = False
+
+    def on_double_click(self, item, column):
+        if self.is_running:
+            return
+        if column == 2:  # Interval column
+            self.start_edit(item, column)
+
+    def toggle_active_by_item(self, item):
+        """Toggle active state for a specific table item"""
+        index = self.table.index(item)
+        if 0 <= index < len(self.key_configs):
+            self.key_configs[index]['active'] = not self.key_configs[index]['active']
+            self.update_table()
+            self.save_config()
     
-    if __name__ == "__main__":
+    def start_edit(self, item, column):
+        if self.is_running:
+            return
+        row = item.row()
+        if column == 2 and 0 <= row < len(self.key_configs):
+            self.table.editItem(self.table.item(row, column))
+    
+    def show_language_menu(self):
+        """Show language selection menu"""
+        menu = QMenu(self)
+        for lang in self.available_languages:
+            menu.addAction(
+                lang['name'], 
+                lambda l=lang['code']: self.change_language(l)
+            )
+        
+        # Show menu at button position
         try:
-            ui = TimerUI()
-            ui.start()  # Run UI on main thread (required by pywebview)
+            x = self.language_button.mapToGlobal(self.language_button.rect().bottomLeft()).x()
+            y = self.language_button.mapToGlobal(self.language_button.rect().bottomLeft()).y()
+            menu.exec(QPoint(x, y))
+        except:
+            menu.exec(QCursor.pos())
+    
+    def change_language(self, language_code):
+        """Change application language"""
+        if language_code != self.current_language:
+            self.i18n.change_language(language_code)
+            self.current_language = self.i18n.get_current_language()
+            self.texts = self.i18n.texts
+            self.available_languages = self.i18n.get_available_languages()
+            self.update_ui_texts()
+            self.save_config()
+
+    def update_ui_texts(self):
+        """Update all UI texts with current language"""
+        self.setWindowTitle(self.get_text("app_title"))
+        self.title_label.setText(self.get_text("app_title"))
+        self.language_button.setText(self.get_text("language_button"))
+        self.key_label.setText(self.get_text("key_label"))
+        self.interval_label.setText(self.get_text("interval_label"))
+        self.add_button.setText(self.get_text("add_button"))
+        self.remove_button.setText(self.get_text("remove_button"))
+        self.start_button.setText(self.get_text("start_button"))
+        self.stop_button.setText(self.get_text("stop_button"))
+        # Update table headers for QTableWidget
+        self.table.setHorizontalHeaderLabels([
+            self.get_text("header_active"),
+            self.get_text("header_key"),
+            self.get_text("header_interval")
+        ])
+        if self.is_running:
+            self.status_label.setText(self.get_text("status_running"))
+        else:
+            self.status_label.setText(self.get_text("status_stopped"))
+        self.hotkey_label.setText(self.get_text("hotkeys_info"))
+        
+    def load_config(self):
+        """Load configuration from file"""
+        try:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                self.key_configs = config.get('key_configs', [])
+                # Ensure 'active' is always a boolean
+                for c in self.key_configs:
+                    if not isinstance(c.get('active', True), bool):
+                        c['active'] = bool(c['active'])
+                self.current_language = config.get('language', 'en')
+                self.i18n.change_language(self.current_language)
+                self.texts = self.i18n.texts
+        except FileNotFoundError:
+            # Create default config with sample data
+            self.key_configs = [
+                {'key': 'z', 'interval': 1000, 'active': True},
+                {'key': 'x', 'interval': 2000, 'active': False},
+                {'key': 'y', 'interval': 3000, 'active': True}
+            ]
+            self.save_config()
         except Exception as e:
-            logging.error(f"Error in main: {str(e)}")
-            raise
-except Exception as e:
-    logging.error(f"Import error: {str(e)}")
-    raise
+            QMessageBox.critical(self, "Error", f"Error loading config: {e}")
+
+    def save_config(self):
+        """Save configuration to file"""
+        try:
+            config = {
+                'key_configs': self.key_configs,
+                'language': self.current_language
+            }
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error saving config: {e}")
+    
+    def add_key_config(self):
+        key = self.key_entry.text().strip().lower()
+        interval_text = self.interval_entry.text().strip()
+        
+        if not key:
+            QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_enter_key"))
+            return
+            
+        try:
+            interval = int(interval_text)
+            if interval <= 0:
+                raise ValueError("Interval must be positive")
+        except ValueError:
+            QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_valid_interval"))
+            return
+            
+        # Check if key already exists
+        for config in self.key_configs:
+            if config['key'] == key:
+                QMessageBox.critical(self, self.get_text("error_title"), 
+                                   self.get_text("error_key_exists").replace('{key}', key))
+                return
+                
+        self.key_configs.append({
+            'key': key,
+            'interval': interval,
+            'active': True
+        })
+        
+        self.update_table()
+        self.key_entry.clear()
+        self.interval_entry.clear()
+        self.save_config()  # Save after adding
+        
+    def remove_key_config(self):
+        selection = self.table.selectedItems()
+        if not selection:
+            QMessageBox.warning(self, self.get_text("warning_title"), self.get_text("warning_select_row"))
+            return
+            
+        row = selection[0].row()
+        if 0 <= row < len(self.key_configs):
+            self.key_configs.pop(row)
+            self.update_table()
+            self.save_config()  # Save after removing
+            
+    def on_table_item_changed(self, item):
+        if self._updating_table or self.is_running:
+            return
+        row = item.row()
+        col = item.column()
+        if 0 <= row < len(self.key_configs):
+            if col == 0:  # Active checkbox
+                self.key_configs[row]['active'] = (item.checkState() == Qt.Checked)
+                self.save_config()
+            elif col == 2:  # Interval
+                try:
+                    interval = int(item.text())
+                    if interval <= 0:
+                        raise ValueError
+                    self.key_configs[row]['interval'] = interval
+                    self.save_config()
+                except ValueError:
+                    QMessageBox.critical(self, self.get_text("error_title"), self.get_text("error_valid_interval"))
+                    self._updating_table = True
+                    item.setText(str(self.key_configs[row]['interval']))
+                    self._updating_table = False
+
+    def update_table(self):
+        self._updating_table = True
+        self.table.setRowCount(0)
+        for idx, config in enumerate(self.key_configs):
+            self.table.insertRow(idx)
+            active_item = QTableWidgetItem()
+            active_item.setFlags(active_item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            active_item.setCheckState(Qt.Checked if config['active'] else Qt.Unchecked)
+            self.table.setItem(idx, 0, active_item)
+            self.table.setItem(idx, 1, QTableWidgetItem(config['key']))
+            self.table.setItem(idx, 2, QTableWidgetItem(str(config['interval'])))
+        self._updating_table = False
+
+    def setup_hotkeys(self):
+        """Setup global hotkeys for start/stop functionality"""
+        try:
+            import keyboard
+            # Do not call keyboard.unhook_all_hotkeys() as it causes errors in some environments
+            # Only add hotkeys if not already set (avoid duplicates by using try/except)
+            try:
+                keyboard.add_hotkey('f7', lambda: self.start_button.click())
+            except Exception:
+                pass
+            try:
+                keyboard.add_hotkey('f8', lambda: self.stop_button.click())
+            except Exception:
+                pass
+        except Exception as e:
+            QMessageBox.warning(self, "Hotkey Error", f"Global hotkey setup failed: {e}")
+            
+    def key_press_manager(self):
+        """Manager thread that processes key presses with minimum delay"""
+        while self.is_running:
+            try:
+                # Get next key from queue with timeout
+                key_to_press = self.key_queue.get(timeout=0.25)
+                
+                win_info = self.get_selected_window_info()
+                if win_info:
+                    window_utils.send_key_to_window(win_info, key_to_press)
+                
+                # Minimum delay of 250ms between key presses
+                time.sleep(0.25) # 250ms delay
+                
+                self.key_queue.task_done()
+                
+            except queue.Empty:
+                # No keys in queue, continue
+                continue
+            except Exception as e:
+                # Log errors silently
+                pass
+                
+    def key_press_worker(self, key, interval):
+        """Worker function for scheduling key presses at intervals"""
+        timer_id = f"{key}_{interval}"
+        while self.is_running and timer_id in self.timers:
+            try:
+                # Only send key if a window is selected
+                if self.selected_window:
+                    window_utils.send_key_to_window(self.selected_window, key)
+            except Exception as e:
+                pass
+            time.sleep(interval / 1000.0)  # Convert ms to seconds
+            
+    def start_pressing(self):
+        if self.is_running:
+            return
+        if self.edit_entry:
+            self.cancel_edit()
+        for c in self.key_configs:
+            if not isinstance(c.get('active', True), bool):
+                c['active'] = bool(c['active'])
+        active_configs = [config for config in self.key_configs if config['active']]
+        if not active_configs:
+            QMessageBox.warning(self, self.get_text("warning_title"), self.get_text("warning_no_active"))
+            return
+        self.is_running = True
+        self.timers = {}
+        self.key_press_thread = threading.Thread(target=self.key_press_manager)
+        self.key_press_thread.daemon = True
+        self.key_press_thread.start()
+        for config in active_configs:
+            key = config['key']
+            interval = config['interval']
+            timer_id = f"{key}_{interval}"
+            thread = threading.Thread(target=self.key_press_worker, args=(key, interval))
+            thread.daemon = True
+            self.timers[timer_id] = thread
+            thread.start()
+        # Disable all controls except STOP
+        self.set_controls_enabled(False)
+        self.stop_button.setEnabled(True)
+        self.status_label.setText(self.get_text("status_running"))
+        self.status_label.setStyleSheet("color: green;")
+
+    def stop_pressing(self):
+        if not self.is_running:
+            return
+        self.is_running = False
+        self.timers = {}
+        while not self.key_queue.empty():
+            try:
+                self.key_queue.get_nowait()
+            except queue.Empty:
+                break
+        # Re-enable all controls
+        self.set_controls_enabled(True)
+        self.stop_button.setEnabled(False)
+        self.status_label.setText(self.get_text("status_stopped"))
+        self.status_label.setStyleSheet("color: red;")
+        
+    def on_closing(self):
+        """Handle application closing"""
+        self.stop_pressing()
+        try:
+            # Remove hotkeys before closing
+            import keyboard
+            keyboard.unhook_all_hotkeys()
+        except:
+            pass
+        self.close()
+
+    def get_text(self, key, **kwargs):
+        return self.i18n.get_text(key, **kwargs)
+
+    def update_window_list(self):
+        windows = window_utils.list_windows()
+        self.window_list = windows
+        if hasattr(self, 'window_combo'):
+            titles = [w['title'] for w in windows]
+            self.window_combo.clear()
+            self.window_combo.addItems(titles)
+            if titles:
+                self.window_combo.setCurrentIndex(0)
+                self.selected_window = windows[0]
+            else:
+                self.selected_window = None
+
+    def on_window_select(self, event=None):
+        if hasattr(self, 'window_combo'):
+            idx = self.window_combo.currentIndex()
+            if 0 <= idx < len(self.window_list):
+                self.selected_window = self.window_list[idx]
+            else:
+                self.selected_window = None
+
+    def get_selected_window_info(self):
+        if hasattr(self, 'selected_window_index') and self.selected_window_index is not None:
+            if 0 <= self.selected_window_index < len(self.window_infos):
+                return self.window_infos[self.selected_window_index]
+        return None
+
+    def focus_selected_window(self):
+        win_info = self.get_selected_window_info()
+        if win_info:
+            window_utils.focus_window(win_info)
+
+    def set_controls_enabled(self, enabled: bool):
+        state = bool(enabled)
+        self.start_button.setEnabled(state)
+        self.add_button.setEnabled(state)
+        self.remove_button.setEnabled(state)
+        self.key_entry.setEnabled(state)
+        self.interval_entry.setEnabled(state)
+        self.table.setEnabled(state)
+        if hasattr(self, 'window_combo'):
+            self.window_combo.setEnabled(state)
+
+def main():
+    app = QApplication(sys.argv)
+    # Set the application icon on QApplication as early as possible
+    ico_path = os.path.abspath('autokeypresser.ico')
+    png_path = os.path.abspath('autokeypresser.png')
+    if os.path.exists(ico_path):
+        app.setWindowIcon(QIcon(ico_path))
+    elif os.path.exists(png_path):
+        app.setWindowIcon(QIcon(png_path))
+    window = KeyPresserApp()
+    window.show()
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
