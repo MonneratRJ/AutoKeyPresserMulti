@@ -72,10 +72,14 @@ body {
 
 .input-group input.key-input {
     flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .input-group input.interval-input {
     flex: 2 1 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .input-group button {
