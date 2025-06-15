@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <script>
+      // Debug helper
+      window.onerror = function (msg, url, line) {
+        console.error(`Error: ${msg}\nURL: ${url}\nLine: ${line}`);
+        return false;
+      };
+    </script>
+  </head>
+  <body>
+    <div class="header">
+      <h1 id="appTitle">Key Presser App</h1>
+      <div class="language-selector">
+        <label for="languageSelect" id="languageLabel">Language:</label>
+        <select id="languageSelect" onchange="changeLanguage(this.value)">
+          <!-- Languages will be populated dynamically -->
+        </select>
+      </div>
+    </div>
+    <div class="input-group">
+      <span class="input-field">
+        <span id="labelKey">Key:</span>
+        <input type="text" id="keyInput" />
+      </span>
+      <span class="input-field">
+        <span id="labelInterval">Interval (ms):</span>
+        <input type="number" id="intervalInput" min="100" value="1000" />
+      </span>
+      <button id="addTimerBtn" onclick="addTimer()">Add Timer</button>
+    </div>
+    <div class="timer-table-container">
+      <table class="timer-table">
+        <thead>
+          <tr>
+            <th id="thActive">Active</th>
+            <th id="thKey">Key</th>
+            <th id="thInterval">Interval (ms)</th>
+            <th id="thActions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="timerList">
+          <!-- Timer items will be added here dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="control-buttons">
+      <button class="start" onclick="startTimers()">Start Timers</button>
+      <button class="stop" onclick="stopTimers()">Stop Timers</button>
+    </div>
+
+    <div class="donate-container" style="text-align: center; margin-top: 32px">
+      <a
+        href="https://www.paypal.com/donate/?business=RFHNR4TM6KPQ4&no_recurring=0&item_name=A+brazilian+software+developer+and+maker+that+enjoys+giving+back+to+the+community.+Help+me+back+if+you+can.+Much+appreciated%21&currency_code=BRL"
+        target="_blank"
+        rel="noopener"
+      >
+        <img
+          src="imgs/paypaldonatebutton.png"
+          alt="Donate with PayPal"
+          style="height: 48px"
+        />
+      </a>
+    </div>
+    <script src="functions.js"></script>
+  </body>
+</html>
