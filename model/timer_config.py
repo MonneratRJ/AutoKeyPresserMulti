@@ -1,6 +1,5 @@
 import json
 import os
-import logging
 
 class TimerConfig:
     class Timer:
@@ -60,8 +59,8 @@ class TimerConfig:
             }
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
-        except Exception as e:
-            logging.error(f"Error saving config: {str(e)}")
+        except Exception:
+            pass
 
     def load_config(self):
         if not os.path.exists(self.config_path):
@@ -74,5 +73,5 @@ class TimerConfig:
                 for t in data.get("timers", [])
             ]
             self.language = data.get("language", "en")
-        except Exception as e:
-            logging.error(f"Error loading config: {str(e)}")
+        except Exception:
+            pass
