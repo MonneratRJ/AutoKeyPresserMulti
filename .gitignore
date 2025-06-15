@@ -1,9 +1,0 @@
-# Ignore config files and locale files
-# These files are generated and should not be tracked by git
-__pycache__
-build/
-config.json
-locales.json
-en.txt
-pt.txt
-sp.txt

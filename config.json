@@ -1,0 +1,10 @@
+{
+    "timers": [
+        {
+            "key": "6",
+            "interval": 6000,
+            "is_active": true
+        }
+    ],
+    "language": "zh"
+}
